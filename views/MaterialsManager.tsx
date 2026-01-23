@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { AppData, Material, MaterialUnit } from '../types';
 import { ICONS } from '../constants';
+import * as XLSX from 'xlsx';
 
 interface MaterialsManagerProps {
   data: AppData;
@@ -11,6 +12,7 @@ interface MaterialsManagerProps {
 const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<Partial<Material>>({
     name: '',
     unit: MaterialUnit.METERS,
@@ -57,22 +59,84 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
             materials: prev.materials.filter(m => m.id !== id)
         }));
     }
-  }
+  };
+
+  const exportToExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(data.materials.map(m => ({
+      ID: m.id,
+      Nombre: m.name,
+      Unidad: m.unit,
+      CostoUnitario: m.costPerUnit,
+      AnchoComercialCm: m.widthCm || ''
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Materiales");
+    XLSX.writeFile(wb, "Lala_Insumos.xlsx");
+  };
+
+  const importFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const bstr = event.target?.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const importedData = XLSX.utils.sheet_to_json(ws) as any[];
+
+      const updatedMaterials: Material[] = importedData.map(row => ({
+        id: row.ID || crypto.randomUUID(),
+        name: row.Nombre || 'Sin nombre',
+        unit: (row.Unidad || 'm') as MaterialUnit,
+        costPerUnit: Number(row.CostoUnitario) || 0,
+        widthCm: row.AnchoComercialCm ? Number(row.AnchoComercialCm) : undefined
+      }));
+
+      if (confirm(`Se han detectado ${updatedMaterials.length} materiales. ¿Deseas sobreescribir la base de datos actual?`)) {
+        updateData(prev => ({ ...prev, materials: updatedMaterials }));
+      }
+    };
+    reader.readAsBinaryString(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Insumos</h2>
           <p className="text-brand-greige font-medium">Telas, hilos, broches y rellenos</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
-        >
-          <ICONS.Add />
-          <span className="group-hover:translate-x-1 transition-transform">Nuevo Material</span>
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={importFromExcel} 
+            className="hidden" 
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
+          >
+            📥 Importar Excel
+          </button>
+          <button 
+            onClick={exportToExcel}
+            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
+          >
+            📤 Exportar Excel
+          </button>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
+          >
+            <ICONS.Add />
+            <span className="group-hover:translate-x-1 transition-transform">Nuevo Material</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-[2.5rem] shadow-sm border border-brand-beige overflow-hidden">

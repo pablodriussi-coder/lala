@@ -52,6 +52,11 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #b2c0a3;
         }
+        @media print {
+            .print\:hidden { display: none !important; }
+            .print\:block { display: block !important; }
+            body { background: white !important; }
+        }
     </style>
 <script type="importmap">
 {
@@ -61,7 +66,8 @@
     "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
     "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
     "recharts": "https://esm.sh/recharts@^3.7.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "xlsx": "https://esm.sh/xlsx@0.18.5"
   }
 }
 </script>

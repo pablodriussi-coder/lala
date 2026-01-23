@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { AppData, Product, ProductMaterialRequirement, MaterialUnit } from '../types';
 import { ICONS } from '../constants';
+import * as XLSX from 'xlsx';
 
 interface ProductsManagerProps {
   data: AppData;
@@ -11,6 +12,7 @@ interface ProductsManagerProps {
 const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const initialFormState: Partial<Product> = {
     name: '',
@@ -53,12 +55,11 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
         [field]: value 
       };
 
-      // Si cambiamos el material, reseteamos las dimensiones si es tela o no
       if (field === 'materialId') {
         if (material?.unit === MaterialUnit.METERS) {
             updatedMaterials[index].widthCm = updatedMaterials[index].widthCm || 0;
             updatedMaterials[index].heightCm = updatedMaterials[index].heightCm || 0;
-            updatedMaterials[index].quantity = 1; // Default
+            updatedMaterials[index].quantity = 1;
         } else {
             updatedMaterials[index].widthCm = undefined;
             updatedMaterials[index].heightCm = undefined;
@@ -82,7 +83,7 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
 
     if (material.unit === MaterialUnit.METERS && req.widthCm && req.heightCm && material.widthCm) {
         const areaNeeded = req.widthCm * req.heightCm;
-        const areaOneMeter = material.widthCm * 100; // Ancho comercial x 1 metro (100cm)
+        const areaOneMeter = material.widthCm * 100;
         const usagePercentage = areaNeeded / areaOneMeter;
         return material.costPerUnit * usagePercentage;
     }
@@ -125,20 +126,120 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
     setFormData(initialFormState);
   };
 
+  const exportToExcel = () => {
+    const mainData = data.products.map(p => ({
+      ID: p.id,
+      Nombre: p.name,
+      Descripcion: p.description,
+      CostoManoObra: p.baseLaborCost
+    }));
+
+    const materialsReqData: any[] = [];
+    data.products.forEach(p => {
+      p.materials.forEach(req => {
+        const mat = data.materials.find(m => m.id === req.materialId);
+        materialsReqData.push({
+          ProductoID: p.id,
+          MaterialNombre: mat?.name || 'Desconocido',
+          MaterialID: req.materialId,
+          Cantidad_O_Retazo: req.quantity,
+          AnchoCm: req.widthCm || '',
+          LargoCm: req.heightCm || ''
+        });
+      });
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.json_to_sheet(mainData);
+    const ws2 = XLSX.utils.json_to_sheet(materialsReqData);
+    XLSX.utils.book_append_sheet(wb, ws1, "Productos");
+    XLSX.utils.book_append_sheet(wb, ws2, "RequisitosMateriales");
+    XLSX.writeFile(wb, "Lala_Catalogo.xlsx");
+  };
+
+  const importFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const bstr = event.target?.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      
+      const wsProd = wb.Sheets[wb.SheetNames[0]];
+      const wsReq = wb.Sheets[wb.SheetNames[1]];
+      
+      const importedProducts = XLSX.utils.sheet_to_json(wsProd) as any[];
+      const importedReqs = XLSX.utils.sheet_to_json(wsReq) as any[];
+
+      const finalProducts: Product[] = importedProducts.map(pRow => {
+        const productID = pRow.ID || crypto.randomUUID();
+        const productReqs = importedReqs.filter(r => r.ProductoID === productID || r.ProductoID === pRow.ID);
+        
+        return {
+          id: productID,
+          name: pRow.Nombre || 'Sin nombre',
+          description: pRow.Descripcion || '',
+          baseLaborCost: Number(pRow.CostoManoObra) || 0,
+          materials: productReqs.map(req => {
+            let matId = req.MaterialID;
+            if (!data.materials.some(m => m.id === matId)) {
+                const foundByName = data.materials.find(m => m.name === req.MaterialNombre);
+                if (foundByName) matId = foundByName.id;
+            }
+            return {
+              materialId: matId,
+              quantity: Number(req.Cantidad_O_Retazo) || 1,
+              widthCm: req.AnchoCm ? Number(req.AnchoCm) : undefined,
+              heightCm: req.LargoCm ? Number(req.LargoCm) : undefined
+            };
+          })
+        };
+      });
+
+      if (confirm(`Se han detectado ${finalProducts.length} productos. ¿Deseas sobreescribir el catálogo actual?`)) {
+        updateData(prev => ({ ...prev, products: finalProducts }));
+      }
+    };
+    reader.readAsBinaryString(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn">
-      <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Catálogo</h2>
           <p className="text-brand-greige font-medium">Define tus productos y sus costos base</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
-        >
-          <ICONS.Add />
-          <span>Crear Producto</span>
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={importFromExcel} 
+            className="hidden" 
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
+          >
+            📥 Importar Catálogo
+          </button>
+          <button 
+            onClick={exportToExcel}
+            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
+          >
+            📤 Exportar Catálogo
+          </button>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
+          >
+            <ICONS.Add />
+            <span>Crear Producto</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
