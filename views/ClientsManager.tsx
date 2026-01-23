@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { AppData, Client } from '../types';
 import { ICONS } from '../constants';
+import * as XLSX from 'xlsx';
 
 interface ClientsManagerProps {
   data: AppData;
@@ -11,6 +12,9 @@ interface ClientsManagerProps {
 const ClientsManager: React.FC<ClientsManagerProps> = ({ data, updateData }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  
   const [formData, setFormData] = useState<Partial<Client>>({
     name: '',
     phone: '',
@@ -44,20 +48,87 @@ const ClientsManager: React.FC<ClientsManagerProps> = ({ data, updateData }) => 
     setFormData({ name: '', phone: '', email: '', address: '' });
   };
 
+  const exportToExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(data.clients.map(c => ({
+      ID: c.id,
+      Nombre: c.name,
+      Telefono: c.phone,
+      Email: c.email,
+      Direccion: c.address
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Clientes");
+    XLSX.writeFile(wb, "Lala_Clientes.xlsx");
+  };
+
+  const importFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const bstr = event.target?.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const importedData = XLSX.utils.sheet_to_json(ws) as any[];
+
+      const updatedClients: Client[] = importedData.map(row => ({
+        id: row.ID || crypto.randomUUID(),
+        name: row.Nombre || 'Sin nombre',
+        phone: row.Telefono?.toString() || '',
+        email: row.Email || '',
+        address: row.Direccion || ''
+      }));
+
+      if (confirm(`Se han detectado ${updatedClients.length} clientes. ¿Deseas sobreescribir el directorio actual?`)) {
+        updateData(prev => ({ ...prev, clients: updatedClients }));
+      }
+    };
+    reader.readAsBinaryString(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const filteredClients = data.clients.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    c.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-8 animate-fadeIn">
-      <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Directorio</h2>
           <p className="text-brand-greige font-medium">Gestión de datos de contacto de clientes</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
-        >
-          <ICONS.Add />
-          <span>Nuevo Registro</span>
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={importFromExcel} 
+            className="hidden" 
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
+          >
+            📥 Importar Clientes
+          </button>
+          <button 
+            onClick={exportToExcel}
+            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
+          >
+            📤 Exportar Clientes
+          </button>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
+          >
+            <ICONS.Add />
+            <span>Nuevo Registro</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-[2.5rem] shadow-sm border border-brand-beige overflow-hidden">
@@ -65,6 +136,8 @@ const ClientsManager: React.FC<ClientsManagerProps> = ({ data, updateData }) => 
           <input 
             type="text" 
             placeholder="Buscar por nombre o email..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-1 px-6 py-3 rounded-2xl border border-brand-beige outline-none focus:border-brand-sage bg-white text-sm"
           />
         </div>
@@ -78,7 +151,7 @@ const ClientsManager: React.FC<ClientsManagerProps> = ({ data, updateData }) => 
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-beige">
-            {data.clients.length > 0 ? data.clients.map(client => (
+            {filteredClients.length > 0 ? filteredClients.map(client => (
               <tr key={client.id} className="hover:bg-brand-white transition-colors group">
                 <td className="px-8 py-5">
                   <div className="flex items-center gap-4">
@@ -115,7 +188,7 @@ const ClientsManager: React.FC<ClientsManagerProps> = ({ data, updateData }) => 
               </tr>
             )) : (
               <tr>
-                <td colSpan={4} className="px-8 py-24 text-center text-brand-greige italic">No hay clientes registrados en el directorio.</td>
+                <td colSpan={4} className="px-8 py-24 text-center text-brand-greige italic">No se encontraron clientes que coincidan con la búsqueda.</td>
               </tr>
             )}
           </tbody>

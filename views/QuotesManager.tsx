@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { AppData, Quote, QuoteItem, Product, Client, Material, MaterialUnit, ProductMaterialRequirement } from '../types';
 import { ICONS } from '../constants';
 import { generateMarketingText } from '../services/geminiService';
+import * as XLSX from 'xlsx';
 
 interface QuotesManagerProps {
   data: AppData;
@@ -17,6 +18,7 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
   const [quoteForPreview, setQuoteForPreview] = useState<Quote | null>(null);
   const [marketingText, setMarketingText] = useState<string | null>(null);
   const [isGeneratingMarketing, setIsGeneratingMarketing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<Partial<Quote>>({
     clientId: '',
@@ -133,6 +135,86 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
     window.print();
   };
 
+  const exportToExcel = () => {
+    const mainData = data.quotes.map(q => {
+      const client = data.clients.find(c => c.id === q.clientId);
+      return {
+        ID: q.id,
+        ClienteID: q.clientId,
+        ClienteNombre: client?.name || 'Desconocido',
+        MargenGanancia: q.profitMarginPercent,
+        FechaCreacion: new Date(q.createdAt).toISOString(),
+        CostoTotal: q.totalCost,
+        PrecioTotal: q.totalPrice,
+        Estado: q.status
+      };
+    });
+
+    const itemsData: any[] = [];
+    data.quotes.forEach(q => {
+      q.items.forEach(item => {
+        const product = data.products.find(p => p.id === item.productId);
+        itemsData.push({
+          PresupuestoID: q.id,
+          ProductoID: item.productId,
+          ProductoNombre: product?.name || 'Desconocido',
+          Cantidad: item.quantity,
+          PrecioPersonalizado: item.customPrice || ''
+        });
+      });
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.json_to_sheet(mainData);
+    const ws2 = XLSX.utils.json_to_sheet(itemsData);
+    XLSX.utils.book_append_sheet(wb, ws1, "Presupuestos");
+    XLSX.utils.book_append_sheet(wb, ws2, "ItemsPresupuesto");
+    XLSX.writeFile(wb, "Lala_Presupuestos.xlsx");
+  };
+
+  const importFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const bstr = event.target?.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      
+      const wsQuotes = wb.Sheets[wb.SheetNames[0]];
+      const wsItems = wb.Sheets[wb.SheetNames[1]];
+      
+      const importedQuotes = XLSX.utils.sheet_to_json(wsQuotes) as any[];
+      const importedItems = XLSX.utils.sheet_to_json(wsItems) as any[];
+
+      const finalQuotes: Quote[] = importedQuotes.map(qRow => {
+        const quoteID = qRow.ID || crypto.randomUUID();
+        const quoteItems = importedItems.filter(i => i.PresupuestoID === quoteID || i.PresupuestoID === qRow.ID);
+        
+        return {
+          id: quoteID,
+          clientId: qRow.ClienteID || '',
+          profitMarginPercent: Number(qRow.MargenGanancia) || 0,
+          createdAt: qRow.FechaCreacion ? new Date(qRow.FechaCreacion).getTime() : Date.now(),
+          totalCost: Number(qRow.CostoTotal) || 0,
+          totalPrice: Number(qRow.PrecioTotal) || 0,
+          status: (qRow.Estado || 'pending') as 'pending' | 'accepted' | 'rejected',
+          items: quoteItems.map(item => ({
+            productId: item.ProductoID || '',
+            quantity: Number(item.Cantidad) || 1,
+            customPrice: item.PrecioPersonalizado ? Number(item.PrecioPersonalizado) : undefined
+          }))
+        };
+      });
+
+      if (confirm(`Se han detectado ${finalQuotes.length} presupuestos. ¿Deseas sobreescribir el historial actual?`)) {
+        updateData(prev => ({ ...prev, quotes: finalQuotes }));
+      }
+    };
+    reader.readAsBinaryString(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   // Recreación FIEL del Logo (Estrella redondeada tipo "Bubble Star")
   const BrandLogo = () => (
     <div className="flex flex-col select-none">
@@ -162,18 +244,39 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
 
   return (
     <div className="space-y-8 animate-fadeIn pb-12">
-      <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm print:hidden">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4 print:hidden">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Presupuestos</h2>
           <p className="text-brand-greige font-medium">Cotizaciones personalizadas para clientes</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
-        >
-          <ICONS.Add />
-          <span>Nueva Cotización</span>
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={importFromExcel} 
+            className="hidden" 
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
+          >
+            📥 Importar Historial
+          </button>
+          <button 
+            onClick={exportToExcel}
+            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
+          >
+            📤 Exportar Historial
+          </button>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
+          >
+            <ICONS.Add />
+            <span>Nueva Cotización</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 print:hidden">
@@ -293,6 +396,18 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
                         onChange={e => setFormData(prev => ({ ...prev, profitMarginPercent: Number(e.target.value) }))}
                         className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:border-brand-sage font-bold text-brand-dark"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-3">Estado</label>
+                      <select 
+                        value={formData.status}
+                        onChange={e => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                        className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:border-brand-sage font-bold text-brand-dark"
+                      >
+                        <option value="pending">Pendiente</option>
+                        <option value="accepted">Aceptado</option>
+                        <option value="rejected">Rechazado</option>
+                      </select>
                     </div>
                   </div>
 
