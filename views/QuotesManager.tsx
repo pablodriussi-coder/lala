@@ -140,7 +140,6 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
             className="text-brand-red fill-current"
             style={{ filter: 'drop-shadow(0px 2px 2px rgba(209, 32, 47, 0.15))' }}
           >
-            {/* Estrella con bordes redondeados (Bubble Star) similar a la imagen */}
             <path d="M12 2.5l2.4 5.2c.2.4.6.7 1.1.7l5.7.4c1.1.1 1.5 1.4.7 2.1l-4.4 3.9c-.3.3-.5.8-.4 1.2l1.4 5.6c.3 1.1-.9 1.9-1.8 1.3L12.7 20c-.4-.2-.9-.2-1.3 0l-4.1 2.8c-1 .7-2.1-.2-1.8-1.3l1.4-5.6c.1-.4-.1-.9-.4-1.2l-4.4-3.9c-.8-.7-.4-2 .7-2.1l5.7-.4c.5 0 .9-.3 1.1-.7l2.4-5.2c.5-1 1.9-1 2.5 0z" />
           </svg>
         </div>
@@ -442,14 +441,6 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
 
                <div className="mt-auto border-t-4 border-brand-dark pt-10 flex justify-end">
                   <div className="w-full max-w-[300px] space-y-4">
-                     <div className="flex justify-between text-brand-greige font-bold">
-                        <span className="text-[10px] uppercase tracking-widest">Subtotal Bruto</span>
-                        <span>${(quoteForPreview.totalPrice / (1 + quoteForPreview.profitMarginPercent/100) ).toFixed(2)}</span>
-                     </div>
-                     <div className="flex justify-between text-brand-greige font-bold">
-                        <span className="text-[10px] uppercase tracking-widest">Margen Trabajo Lala</span>
-                        <span>{quoteForPreview.profitMarginPercent}%</span>
-                     </div>
                      <div className="flex justify-between items-center border-t border-brand-beige pt-4">
                         <span className="text-lg font-black text-brand-dark uppercase tracking-widest">TOTAL FINAL</span>
                         <span className="text-3xl font-black text-brand-sage">${quoteForPreview.totalPrice.toFixed(2)}</span>
