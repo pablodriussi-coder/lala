@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { AppData, Quote, QuoteItem, Product, Client, Material } from '../types';
+import { AppData, Quote, QuoteItem, Product, Client, Material, MaterialUnit, ProductMaterialRequirement } from '../types';
 import { ICONS } from '../constants';
 import { generateMarketingText } from '../services/geminiService';
 
@@ -25,14 +25,27 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
     status: 'pending'
   });
 
+  const calculateRequirementCost = (req: ProductMaterialRequirement) => {
+    const material = data.materials.find(m => m.id === req.materialId);
+    if (!material) return 0;
+
+    if (material.unit === MaterialUnit.METERS && req.widthCm && req.heightCm && material.widthCm) {
+        const areaNeeded = req.widthCm * req.heightCm;
+        const areaOneMeter = material.widthCm * 100;
+        const usagePercentage = areaNeeded / areaOneMeter;
+        return material.costPerUnit * usagePercentage;
+    }
+
+    return material.costPerUnit * req.quantity;
+  };
+
   const calculateCosts = (items: QuoteItem[]) => {
     return items.reduce((acc, item) => {
       const product = data.products.find(p => p.id === item.productId);
       if (!product) return acc;
       
       const materialCost = product.materials.reduce((mAcc, req) => {
-        const mat = data.materials.find(m => m.id === req.materialId);
-        return mAcc + (mat ? mat.costPerUnit * req.quantity : 0);
+        return mAcc + calculateRequirementCost(req);
       }, 0);
 
       const unitCost = materialCost + (Number(product.baseLaborCost) || 0);
@@ -120,27 +133,27 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
     window.print();
   };
 
-  // Recreación fiel del Logo Original (Basado en la imagen subida)
+  // Recreación FIEL del Logo (Estrella redondeada tipo "Bubble Star")
   const BrandLogo = () => (
     <div className="flex flex-col select-none">
       <div className="flex items-start gap-1">
         <div className="flex flex-col">
-          <h1 className="text-7xl font-black text-brand-dark leading-[0.75] tracking-tighter">
+          <h1 className="text-[85px] font-black text-brand-dark leading-[0.7] tracking-[-0.04em]" style={{ fontFamily: '"Quicksand", sans-serif' }}>
             Lala
           </h1>
-          <span className="text-2xl text-brand-dark font-medium tracking-[0.25em] mt-3 ml-1 opacity-90 uppercase">
+          <span className="text-2xl text-brand-dark font-medium tracking-[0.28em] mt-5 ml-1 opacity-90 uppercase">
             accesorios
           </span>
         </div>
-        <div className="pt-0.5">
+        <div className="pt-2 ml-1">
           <svg 
-            width="42" 
-            height="42" 
+            width="50" 
+            height="50" 
             viewBox="0 0 24 24" 
             className="text-brand-red fill-current"
-            style={{ filter: 'drop-shadow(0px 2px 2px rgba(209, 32, 47, 0.15))' }}
           >
-            <path d="M12 2.5l2.4 5.2c.2.4.6.7 1.1.7l5.7.4c1.1.1 1.5 1.4.7 2.1l-4.4 3.9c-.3.3-.5.8-.4 1.2l1.4 5.6c.3 1.1-.9 1.9-1.8 1.3L12.7 20c-.4-.2-.9-.2-1.3 0l-4.1 2.8c-1 .7-2.1-.2-1.8-1.3l1.4-5.6c.1-.4-.1-.9-.4-1.2l-4.4-3.9c-.8-.7-.4-2 .7-2.1l5.7-.4c.5 0 .9-.3 1.1-.7l2.4-5.2c.5-1 1.9-1 2.5 0z" />
+            {/* Estrella con puntas súper redondeadas exacta a la imagen */}
+            <path d="M12 2c.6 0 1.2.3 1.5.8l2.2 4.1c.2.4.6.7 1.1.7l4.6.6c1 .1 1.4 1.3.7 2l-3.3 3.1c-.3.3-.5.8-.4 1.2l.8 4.4c.2 1-.9 1.7-1.7 1.2L13.4 18c-.4-.2-.9-.2-1.3 0l-4.1 2.1c-.8.5-1.9-.2-1.7-1.2l.8-4.4c.1-.4-.1-.9-.4-1.2l-3.3-3.1c-.7-.7-.3-1.9.7-2l4.6-.6c.5 0 .9-.3 1.1-.7l2.2-4.1c.3-.5.9-.8 1.5-.8z" />
           </svg>
         </div>
       </div>
@@ -248,7 +261,7 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
         )}
       </div>
 
-      {/* Main Creation/Editing Modal */}
+      {/* Modal Principal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-brand-dark/30 backdrop-blur-md flex items-center justify-center z-50 p-4 print:hidden">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-slideUp border border-brand-beige">
@@ -281,20 +294,6 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
                         className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:border-brand-sage font-bold text-brand-dark"
                       />
                     </div>
-                    {editingId && (
-                      <div>
-                        <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-3">Estado</label>
-                        <select 
-                          value={formData.status}
-                          onChange={e => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
-                          className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:border-brand-sage font-bold text-brand-dark"
-                        >
-                          <option value="pending">Pendiente</option>
-                          <option value="accepted">Aceptado</option>
-                          <option value="rejected">Rechazado</option>
-                        </select>
-                      </div>
-                    )}
                   </div>
 
                   <div className="space-y-6">
@@ -347,11 +346,10 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
         </div>
       )}
 
-      {/* Preview Modal for PDF Printing */}
+      {/* Vista Previa Impresión */}
       {isPreviewOpen && quoteForPreview && (
         <div className="fixed inset-0 bg-brand-dark/50 backdrop-blur-xl flex items-start justify-center z-[100] p-4 md:p-10 overflow-y-auto print:bg-white print:p-0 print:block">
           <div className="bg-white w-full max-w-[800px] shadow-2xl min-h-[1000px] flex flex-col print:shadow-none print:max-w-none print:w-full">
-            {/* Modal Header (Hidden on print) */}
             <div className="bg-brand-white p-6 flex justify-between items-center border-b border-brand-beige print:hidden sticky top-0 z-10">
               <div className="flex items-center gap-4">
                  <button onClick={() => setIsPreviewOpen(false)} className="text-brand-greige hover:text-brand-dark">
@@ -369,12 +367,11 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
               </button>
             </div>
 
-            {/* Document Content */}
             <div className="p-12 md:p-20 flex-1 flex flex-col print:p-8">
                <div className="flex justify-between items-start mb-20">
                   <BrandLogo />
-                  <div className="text-right">
-                    <h3 className="text-2xl font-black text-brand-dark uppercase tracking-widest mb-2">PRESUPUESTO</h3>
+                  <div className="text-right pt-4">
+                    <h3 className="text-3xl font-black text-brand-dark uppercase tracking-[0.2em] mb-2">PRESUPUESTO</h3>
                     <p className="text-brand-greige font-bold text-sm">#PRE-{quoteForPreview.id.slice(0, 8).toUpperCase()}</p>
                     <p className="text-brand-greige font-bold text-sm">{new Date(quoteForPreview.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
                   </div>
@@ -418,8 +415,7 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
                       if (!p) return null;
 
                       const materialCost = p.materials.reduce((mAcc, req) => {
-                        const mat = data.materials.find(m => m.id === req.materialId);
-                        return mAcc + (mat ? mat.costPerUnit * req.quantity : 0);
+                        return mAcc + calculateRequirementCost(req);
                       }, 0);
                       const baseUnitCost = materialCost + (Number(p.baseLaborCost) || 0);
                       const unitPrice = baseUnitCost * (1 + quoteForPreview.profitMarginPercent / 100);

@@ -14,7 +14,8 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
   const [formData, setFormData] = useState<Partial<Material>>({
     name: '',
     unit: MaterialUnit.METERS,
-    costPerUnit: 0
+    costPerUnit: 0,
+    widthCm: 150
   });
 
   const handleSave = (e: React.FormEvent) => {
@@ -24,6 +25,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
       name: formData.name || 'Sin nombre',
       unit: formData.unit as MaterialUnit || MaterialUnit.METERS,
       costPerUnit: Number(formData.costPerUnit) || 0,
+      widthCm: formData.unit === MaterialUnit.METERS ? (Number(formData.widthCm) || 150) : undefined
     };
 
     updateData(prev => ({
@@ -39,7 +41,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
-    setFormData({ name: '', unit: MaterialUnit.METERS, costPerUnit: 0 });
+    setFormData({ name: '', unit: MaterialUnit.METERS, costPerUnit: 0, widthCm: 150 });
   };
 
   const openEdit = (material: Material) => {
@@ -78,7 +80,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
           <thead>
             <tr className="bg-brand-white">
               <th className="px-8 py-6 font-black text-brand-greige uppercase tracking-widest text-[10px]">Descripción</th>
-              <th className="px-8 py-6 font-black text-brand-greige uppercase tracking-widest text-[10px]">Unidad</th>
+              <th className="px-8 py-6 font-black text-brand-greige uppercase tracking-widest text-[10px]">Unidad / Ancho</th>
               <th className="px-8 py-6 font-black text-brand-greige uppercase tracking-widest text-[10px]">Costo Unitario</th>
               <th className="px-8 py-6 font-black text-brand-greige uppercase tracking-widest text-[10px] text-right">Gestión</th>
             </tr>
@@ -88,7 +90,10 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
               <tr key={m.id} className="hover:bg-brand-white/50 transition-colors group">
                 <td className="px-8 py-5 font-bold text-brand-dark">{m.name}</td>
                 <td className="px-8 py-5">
-                  <span className="px-4 py-1.5 bg-brand-beige/30 rounded-full text-xs font-bold text-brand-greige">{m.unit}</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-brand-dark">{m.unit === 'm' ? 'Metro lineal' : m.unit === 'u' ? 'Unidad' : 'Kilogramo'}</span>
+                    {m.unit === 'm' && <span className="text-[10px] text-brand-greige font-bold">Ancho: {m.widthCm} cm</span>}
+                  </div>
                 </td>
                 <td className="px-8 py-5 font-bold text-brand-sage">${m.costPerUnit.toFixed(2)}</td>
                 <td className="px-8 py-5 text-right space-x-2">
@@ -148,6 +153,20 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
                     />
                   </div>
                 </div>
+
+                {formData.unit === MaterialUnit.METERS && (
+                   <div className="animate-fadeIn">
+                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Ancho Comercial (cm)</label>
+                    <input 
+                      type="number" required
+                      value={formData.widthCm}
+                      onChange={e => setFormData({ ...formData, widthCm: Number(e.target.value) })}
+                      className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige focus:border-brand-sage outline-none font-bold"
+                    />
+                    <p className="text-[10px] text-brand-greige mt-2 italic">Esto servirá para calcular el costo por retazos en los productos.</p>
+                  </div>
+                )}
+
                 <div className="flex gap-4 pt-4">
                   <button type="button" onClick={closeModal} className="flex-1 py-4 text-brand-greige font-bold hover:text-brand-dark transition-colors">Cerrar</button>
                   <button type="submit" className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold shadow-xl shadow-brand-sage/10 hover:bg-brand-dark transition-all">

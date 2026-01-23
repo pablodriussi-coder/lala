@@ -10,11 +10,14 @@ export interface Material {
   name: string;
   unit: MaterialUnit;
   costPerUnit: number;
+  widthCm?: number; // Para telas (ancho comercial)
 }
 
 export interface ProductMaterialRequirement {
   materialId: string;
-  quantity: number;
+  quantity: number; // Para unidades o kg
+  widthCm?: number; // Para cortes de tela
+  heightCm?: number; // Para cortes de tela
 }
 
 export interface Product {
