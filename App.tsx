@@ -9,12 +9,14 @@ import MaterialsManager from './views/MaterialsManager';
 import ProductsManager from './views/ProductsManager';
 import QuotesManager from './views/QuotesManager';
 import ClientsManager from './views/ClientsManager';
+import AccountingManager from './views/AccountingManager';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   
   const navItems = [
     { path: '/', label: 'Inicio', icon: ICONS.Dashboard },
+    { path: '/accounting', label: 'Contabilidad', icon: ICONS.Accounting },
     { path: '/quotes', label: 'Presupuestos', icon: ICONS.Quotes },
     { path: '/materials', label: 'Materiales', icon: ICONS.Materials },
     { path: '/products', label: 'Catálogo', icon: ICONS.Products },
@@ -99,6 +101,7 @@ export default function App() {
           <Route path="/products" element={<ProductsManager data={data} updateData={updateData} />} />
           <Route path="/quotes" element={<QuotesManager data={data} updateData={updateData} />} />
           <Route path="/clients" element={<ClientsManager data={data} updateData={updateData} />} />
+          <Route path="/accounting" element={<AccountingManager data={data} updateData={updateData} />} />
         </Routes>
       </Layout>
     </HashRouter>

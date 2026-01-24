@@ -53,13 +53,27 @@ export interface Quote {
   status: 'pending' | 'accepted' | 'rejected';
 }
 
+export type TransactionType = 'income' | 'expense';
+export type TransactionCategory = 'venta' | 'materia_prima' | 'mantenimiento' | 'servicios' | 'alquiler' | 'otros' | 'capital_inicial';
+
+export interface Transaction {
+  id: string;
+  date: number;
+  type: TransactionType;
+  category: TransactionCategory;
+  amount: number;
+  description: string;
+}
+
 export interface AppData {
   materials: Material[];
   products: Product[];
   clients: Client[];
   quotes: Quote[];
+  transactions: Transaction[];
   settings: {
     brandName: string;
     defaultMargin: number;
+    initialFunds?: number;
   };
 }

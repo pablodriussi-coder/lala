@@ -9,15 +9,20 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ data }) => {
   const totalQuotes = data.quotes.length;
-  const totalRevenue = data.quotes.reduce((acc, q) => acc + q.totalPrice, 0);
+  
+  const financialTotals = React.useMemo(() => {
+    const income = data.transactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc, 0);
+    const expense = data.transactions.reduce((acc, t) => t.type === 'expense' ? acc + t.amount : acc, 0);
+    return { balance: income - expense, income, expense };
+  }, [data.transactions]);
+
   const totalMaterials = data.materials.length;
   const totalClients = data.clients.length;
 
   const chartData = [
-    { name: 'Insumos', value: totalMaterials, color: '#d1cdc1' },
-    { name: 'Catálogo', value: data.products.length, color: '#e8e4d3' },
-    { name: 'Pedidos', value: totalQuotes, color: '#b2c0a3' },
-    { name: 'Clientes', value: totalClients, color: '#404040' },
+    { name: 'Saldo', value: financialTotals.balance, color: '#b2c0a3' },
+    { name: 'Gastos', value: financialTotals.expense, color: '#d1202f' },
+    { name: 'Ventas', value: totalQuotes, color: '#404040' },
   ];
 
   const recentQuotes = [...data.quotes]
@@ -39,7 +44,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Ingresos Totales', value: `$${totalRevenue.toLocaleString()}`, icon: '🏷️', color: 'text-brand-dark' },
+          { label: 'Capital Disponible', value: `$${financialTotals.balance.toLocaleString()}`, icon: '💰', color: 'text-brand-dark' },
           { label: 'Presupuestos', value: totalQuotes, icon: '📋', color: 'text-brand-sage' },
           { label: 'Materiales', value: totalMaterials, icon: '🧵', color: 'text-brand-greige' },
           { label: 'Clientes', value: totalClients, icon: '🤝', color: 'text-brand-red' },
@@ -58,7 +63,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         {/* Activity Chart */}
         <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-brand-beige">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="text-xl font-bold text-brand-dark">Resumen de Negocio</h3>
+            <h3 className="text-xl font-bold text-brand-dark">Estado del Negocio</h3>
             <span className="text-brand-red text-xl">★</span>
           </div>
           <div className="h-64">
