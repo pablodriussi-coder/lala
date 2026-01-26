@@ -1,29 +1,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { fetchAllData, syncMaterialsBatch, syncClientsBatch, syncTransactionsBatch, syncQuote, syncProduct, syncReceipt, saveFullBackup } from './store';
+import { fetchAllData, syncMaterialsBatch, syncClientsBatch, syncTransactionsBatch, syncQuote, syncProduct, deleteFromSupabase } from './store';
 import { AppData, Material, Product, Client, Quote, Transaction } from './types';
 import { ICONS } from './constants';
-// Add missing import for supabase client
-import { supabase } from './supabaseClient';
 import Dashboard from './views/Dashboard';
 import MaterialsManager from './views/MaterialsManager';
 import ProductsManager from './views/ProductsManager';
 import QuotesManager from './views/QuotesManager';
-import ReceiptsManager from './views/ReceiptsManager';
 import ClientsManager from './views/ClientsManager';
 import AccountingManager from './views/AccountingManager';
 import QuickCalculator from './views/QuickCalculator';
 
-const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean, isOffline?: boolean }> = ({ children, isLoading, isOffline }) => {
+const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ children, isLoading }) => {
   const location = useLocation();
   const navItems = [
     { path: '/', label: 'Inicio', icon: ICONS.Dashboard },
-    { path: '/accounting', label: 'Finanzas', icon: ICONS.Accounting },
-    { path: '/calculator', label: 'Express', icon: ICONS.Calculator },
+    { path: '/accounting', label: 'Contabilidad', icon: ICONS.Accounting },
+    { path: '/calculator', label: 'Calculadora', icon: ICONS.Calculator },
     { path: '/quotes', label: 'Presupuestos', icon: ICONS.Quotes },
-    { path: '/receipts', label: 'Recibos', icon: () => <span>🎫</span> },
-    { path: '/materials', label: 'Insumos', icon: ICONS.Materials },
+    { path: '/materials', label: 'Materiales', icon: ICONS.Materials },
     { path: '/products', label: 'Catálogo', icon: ICONS.Products },
     { path: '/clients', label: 'Clientes', icon: ICONS.Clients },
   ];
@@ -38,15 +34,8 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean, isOfflin
             </h1>
             <p className="text-[11px] text-brand-greige font-semibold tracking-[0.2em] uppercase mt-1">accesorios</p>
           </div>
-          
-          <div className="mt-4 flex items-center gap-2">
-             <div className={`w-2 h-2 rounded-full ${isOffline ? 'bg-red-500 animate-pulse' : isLoading ? 'bg-yellow-400 animate-bounce' : 'bg-green-500'}`}></div>
-             <span className="text-[9px] font-bold text-brand-greige uppercase tracking-widest">
-                {isOffline ? 'Modo Local (Sin Red)' : isLoading ? 'Sincronizando...' : 'Conectado a la Nube'}
-             </span>
-          </div>
         </div>
-        <nav className="mt-8 overflow-y-auto h-[calc(100vh-180px)]">
+        <nav className="mt-8">
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -63,16 +52,10 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean, isOfflin
       </aside>
 
       <main className="flex-1 overflow-y-auto relative">
-        {isOffline && (
-            <div className="bg-red-50 text-red-600 px-6 py-2 text-xs font-bold border-b border-red-100 flex justify-between items-center animate-fadeIn">
-                <span>⚠️ No se pudo conectar con Supabase. Los cambios se guardarán en este navegador.</span>
-                <button onClick={() => window.location.reload()} className="underline">Reintentar Conexión</button>
-            </div>
-        )}
         {isLoading ? (
           <div className="h-full flex flex-col items-center justify-center space-y-4">
              <div className="w-12 h-12 border-4 border-brand-beige border-t-brand-sage rounded-full animate-spin"></div>
-             <p className="text-brand-greige font-bold animate-pulse">Cargando aplicación...</p>
+             <p className="text-brand-greige font-bold animate-pulse">Sincronizando con la nube...</p>
           </div>
         ) : (
           <div className="p-6 md:p-10 max-w-7xl mx-auto pb-24 md:pb-10">
@@ -80,9 +63,9 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean, isOfflin
           </div>
         )}
         
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-brand-beige flex justify-around p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-50 overflow-x-auto">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-brand-beige flex justify-around p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-50">
             {navItems.map((item) => (
-                <Link key={item.path} to={item.path} className={`${location.pathname === item.path ? 'text-brand-sage scale-110' : 'text-brand-greige'} transition-transform px-3`}>
+                <Link key={item.path} to={item.path} className={`${location.pathname === item.path ? 'text-brand-sage scale-110' : 'text-brand-greige'} transition-transform`}>
                     <item.icon />
                 </Link>
             ))}
@@ -95,69 +78,54 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean, isOfflin
 export default function App() {
   const [data, setData] = useState<AppData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
     const init = async () => {
-      // Intentamos cargar de Supabase
       const result = await fetchAllData();
-      
-      // Si el resultado es igual al inicial (o vacío) y fetchAllData falló, 
-      // fetchAllData ya nos devuelve el backup local.
       setData(result);
-      
-      // Verificamos conexión simple
-      try {
-         const { error } = await supabase.from('materials').select('id').limit(1);
-         if (error) throw error;
-         setIsOffline(false);
-      } catch (e) {
-         setIsOffline(true);
-      }
-      
       setLoading(false);
     };
     init();
   }, []);
 
-  const updateAndSync = async (nextData: AppData) => {
-    setData(nextData);
-    saveFullBackup(nextData);
-  };
-
   const handleUpdateMaterials = async (newMaterials: Material[]) => {
     if (!data) return;
-    const next = {...data, materials: newMaterials};
-    updateAndSync(next);
+    const deletedIds = data.materials.filter(m => !newMaterials.find(nm => nm.id === m.id)).map(m => m.id);
+    setData({...data, materials: newMaterials});
     await syncMaterialsBatch(newMaterials);
+    for (const id of deletedIds) await deleteFromSupabase('materials', id);
   };
 
   const handleUpdateProducts = async (newProducts: Product[]) => {
     if (!data) return;
-    const next = {...data, products: newProducts};
-    updateAndSync(next);
+    const deletedIds = data.products.filter(p => !newProducts.find(np => np.id === p.id)).map(p => p.id);
+    setData({...data, products: newProducts});
     for (const p of newProducts) await syncProduct(p);
+    for (const id of deletedIds) await deleteFromSupabase('products', id);
   };
 
   const handleUpdateClients = async (newClients: Client[]) => {
     if (!data) return;
-    const next = {...data, clients: newClients};
-    updateAndSync(next);
+    const deletedIds = data.clients.filter(c => !newClients.find(nc => nc.id === c.id)).map(c => c.id);
+    setData({...data, clients: newClients});
     await syncClientsBatch(newClients);
+    for (const id of deletedIds) await deleteFromSupabase('clients', id);
   };
 
-  const handleUpdateQuotes = async (nextData: AppData) => {
-    updateAndSync(nextData);
-    for (const q of nextData.quotes) await syncQuote(q);
-    for (const r of nextData.receipts) await syncReceipt(r);
-    await syncTransactionsBatch(nextData.transactions);
+  const handleUpdateQuotes = async (newQuotes: Quote[]) => {
+    if (!data) return;
+    const deletedIds = data.quotes.filter(q => !newQuotes.find(nq => nq.id === q.id)).map(q => q.id);
+    setData({...data, quotes: newQuotes});
+    for (const q of newQuotes) await syncQuote(q);
+    for (const id of deletedIds) await deleteFromSupabase('quotes', id);
   };
 
   const handleUpdateTransactions = async (newTransactions: Transaction[]) => {
     if (!data) return;
-    const next = {...data, transactions: newTransactions};
-    updateAndSync(next);
+    const deletedIds = data.transactions.filter(t => !newTransactions.find(nt => nt.id === t.id)).map(t => t.id);
+    setData({...data, transactions: newTransactions});
     await syncTransactionsBatch(newTransactions);
+    for (const id of deletedIds) await deleteFromSupabase('transactions', id);
   };
 
   if (!data && loading) return (
@@ -171,7 +139,7 @@ export default function App() {
 
   return (
     <HashRouter>
-      <Layout isLoading={loading} isOffline={isOffline}>
+      <Layout isLoading={loading}>
         <Routes>
           <Route path="/" element={<Dashboard data={safeData} />} />
           <Route path="/materials" element={<MaterialsManager data={safeData} updateData={(up) => {
@@ -184,11 +152,7 @@ export default function App() {
           }} />} />
           <Route path="/quotes" element={<QuotesManager data={safeData} updateData={(up) => {
               const next = up(safeData);
-              handleUpdateQuotes(next);
-          }} />} />
-          <Route path="/receipts" element={<ReceiptsManager data={safeData} updateData={(up) => {
-              const next = up(safeData);
-              handleUpdateQuotes(next);
+              handleUpdateQuotes(next.quotes);
           }} />} />
           <Route path="/clients" element={<ClientsManager data={safeData} updateData={(up) => {
               const next = up(safeData);
@@ -210,7 +174,6 @@ const INITIAL_APP_DATA: AppData = {
   products: [],
   clients: [],
   quotes: [],
-  receipts: [],
   transactions: [],
-  settings: { brandName: 'Lala', defaultMargin: 50, whatsappNumber: '5491122334455' }
+  settings: { brandName: 'Lala', defaultMargin: 50 }
 };

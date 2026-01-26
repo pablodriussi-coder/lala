@@ -60,15 +60,15 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Activity Chart con fix de dimensiones */}
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-brand-beige flex flex-col min-h-[400px]">
+        {/* Activity Chart */}
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-brand-beige">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-xl font-bold text-brand-dark">Estado del Negocio</h3>
             <span className="text-brand-red text-xl">★</span>
           </div>
-          <div className="flex-1 w-full min-h-[250px]">
-            <ResponsiveContainer width="100%" height="100%" minHeight={250}>
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#d1cdc1', fontSize: 12}} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#d1cdc1', fontSize: 12}} />
@@ -87,7 +87,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         </div>
 
         {/* Recent Quotes */}
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-brand-beige overflow-hidden">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-brand-beige">
           <h3 className="text-xl font-bold text-brand-dark mb-8">Actividad Reciente</h3>
           <div className="space-y-5">
             {recentQuotes.length > 0 ? recentQuotes.map((quote) => {
