@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { fetchAllData, syncMaterialsBatch, syncClientsBatch, syncTransactionsBatch, syncQuote, syncProduct, syncReceipt, deleteFromSupabase } from './store';
-import { AppData, Material, Product, Client, Quote, Transaction, Receipt } from './types';
+import { fetchAllData, syncMaterialsBatch, syncClientsBatch, syncTransactionsBatch, syncQuote, syncProduct, syncReceipt, saveFullBackup } from './store';
+import { AppData, Material, Product, Client, Quote, Transaction } from './types';
 import { ICONS } from './constants';
+// Add missing import for supabase client
+import { supabase } from './supabaseClient';
 import Dashboard from './views/Dashboard';
 import MaterialsManager from './views/MaterialsManager';
 import ProductsManager from './views/ProductsManager';
@@ -13,7 +15,7 @@ import ClientsManager from './views/ClientsManager';
 import AccountingManager from './views/AccountingManager';
 import QuickCalculator from './views/QuickCalculator';
 
-const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ children, isLoading }) => {
+const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean, isOffline?: boolean }> = ({ children, isLoading, isOffline }) => {
   const location = useLocation();
   const navItems = [
     { path: '/', label: 'Inicio', icon: ICONS.Dashboard },
@@ -36,8 +38,15 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
             </h1>
             <p className="text-[11px] text-brand-greige font-semibold tracking-[0.2em] uppercase mt-1">accesorios</p>
           </div>
+          
+          <div className="mt-4 flex items-center gap-2">
+             <div className={`w-2 h-2 rounded-full ${isOffline ? 'bg-red-500 animate-pulse' : isLoading ? 'bg-yellow-400 animate-bounce' : 'bg-green-500'}`}></div>
+             <span className="text-[9px] font-bold text-brand-greige uppercase tracking-widest">
+                {isOffline ? 'Modo Local (Sin Red)' : isLoading ? 'Sincronizando...' : 'Conectado a la Nube'}
+             </span>
+          </div>
         </div>
-        <nav className="mt-8 overflow-y-auto h-[calc(100vh-140px)]">
+        <nav className="mt-8 overflow-y-auto h-[calc(100vh-180px)]">
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -54,10 +63,16 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
       </aside>
 
       <main className="flex-1 overflow-y-auto relative">
+        {isOffline && (
+            <div className="bg-red-50 text-red-600 px-6 py-2 text-xs font-bold border-b border-red-100 flex justify-between items-center animate-fadeIn">
+                <span>⚠️ No se pudo conectar con Supabase. Los cambios se guardarán en este navegador.</span>
+                <button onClick={() => window.location.reload()} className="underline">Reintentar Conexión</button>
+            </div>
+        )}
         {isLoading ? (
           <div className="h-full flex flex-col items-center justify-center space-y-4">
              <div className="w-12 h-12 border-4 border-brand-beige border-t-brand-sage rounded-full animate-spin"></div>
-             <p className="text-brand-greige font-bold animate-pulse">Sincronizando con la nube...</p>
+             <p className="text-brand-greige font-bold animate-pulse">Cargando aplicación...</p>
           </div>
         ) : (
           <div className="p-6 md:p-10 max-w-7xl mx-auto pb-24 md:pb-10">
@@ -80,55 +95,69 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
 export default function App() {
   const [data, setData] = useState<AppData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
     const init = async () => {
+      // Intentamos cargar de Supabase
       const result = await fetchAllData();
+      
+      // Si el resultado es igual al inicial (o vacío) y fetchAllData falló, 
+      // fetchAllData ya nos devuelve el backup local.
       setData(result);
+      
+      // Verificamos conexión simple
+      try {
+         const { error } = await supabase.from('materials').select('id').limit(1);
+         if (error) throw error;
+         setIsOffline(false);
+      } catch (e) {
+         setIsOffline(true);
+      }
+      
       setLoading(false);
     };
     init();
   }, []);
 
+  const updateAndSync = async (nextData: AppData) => {
+    setData(nextData);
+    saveFullBackup(nextData);
+  };
+
   const handleUpdateMaterials = async (newMaterials: Material[]) => {
     if (!data) return;
-    setData({...data, materials: newMaterials});
+    const next = {...data, materials: newMaterials};
+    updateAndSync(next);
     await syncMaterialsBatch(newMaterials);
   };
 
   const handleUpdateProducts = async (newProducts: Product[]) => {
     if (!data) return;
-    setData({...data, products: newProducts});
+    const next = {...data, products: newProducts};
+    updateAndSync(next);
     for (const p of newProducts) await syncProduct(p);
   };
 
   const handleUpdateClients = async (newClients: Client[]) => {
     if (!data) return;
-    setData({...data, clients: newClients});
+    const next = {...data, clients: newClients};
+    updateAndSync(next);
     await syncClientsBatch(newClients);
   };
 
   const handleUpdateQuotes = async (nextData: AppData) => {
-    if (!data) return;
-    setData(nextData);
-    // Sincronizamos presupuestos
+    updateAndSync(nextData);
     for (const q of nextData.quotes) await syncQuote(q);
-    // También sincronizamos recibos y transacciones si se generaron nuevos
     for (const r of nextData.receipts) await syncReceipt(r);
     await syncTransactionsBatch(nextData.transactions);
   };
 
   const handleUpdateTransactions = async (newTransactions: Transaction[]) => {
     if (!data) return;
-    setData({...data, transactions: newTransactions});
+    const next = {...data, transactions: newTransactions};
+    updateAndSync(next);
     await syncTransactionsBatch(newTransactions);
-  };
-
-  const handleUpdateReceipts = async (nextData: AppData) => {
-    if (!data) return;
-    setData(nextData);
-    for (const r of nextData.receipts) await syncReceipt(r);
-    await syncTransactionsBatch(nextData.transactions);
   };
 
   if (!data && loading) return (
@@ -142,7 +171,7 @@ export default function App() {
 
   return (
     <HashRouter>
-      <Layout isLoading={loading}>
+      <Layout isLoading={loading} isOffline={isOffline}>
         <Routes>
           <Route path="/" element={<Dashboard data={safeData} />} />
           <Route path="/materials" element={<MaterialsManager data={safeData} updateData={(up) => {
@@ -159,7 +188,7 @@ export default function App() {
           }} />} />
           <Route path="/receipts" element={<ReceiptsManager data={safeData} updateData={(up) => {
               const next = up(safeData);
-              handleUpdateReceipts(next);
+              handleUpdateQuotes(next);
           }} />} />
           <Route path="/clients" element={<ClientsManager data={safeData} updateData={(up) => {
               const next = up(safeData);
