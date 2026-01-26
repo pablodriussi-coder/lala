@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { fetchAllData, syncMaterialsBatch, syncClientsBatch, syncTransactionsBatch, syncQuote, syncProduct, deleteFromSupabase } from './store';
-import { AppData, Material, Product, Client, Quote, Transaction } from './types';
+import { fetchAllData, syncMaterialsBatch, syncClientsBatch, syncTransactionsBatch, syncQuote, syncProduct, syncReceipt, deleteFromSupabase } from './store';
+import { AppData, Material, Product, Client, Quote, Transaction, Receipt } from './types';
 import { ICONS } from './constants';
 import Dashboard from './views/Dashboard';
 import MaterialsManager from './views/MaterialsManager';
 import ProductsManager from './views/ProductsManager';
 import QuotesManager from './views/QuotesManager';
+import ReceiptsManager from './views/ReceiptsManager';
 import ClientsManager from './views/ClientsManager';
 import AccountingManager from './views/AccountingManager';
 import QuickCalculator from './views/QuickCalculator';
@@ -16,10 +17,11 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
   const location = useLocation();
   const navItems = [
     { path: '/', label: 'Inicio', icon: ICONS.Dashboard },
-    { path: '/accounting', label: 'Contabilidad', icon: ICONS.Accounting },
-    { path: '/calculator', label: 'Calculadora', icon: ICONS.Calculator },
+    { path: '/accounting', label: 'Finanzas', icon: ICONS.Accounting },
+    { path: '/calculator', label: 'Express', icon: ICONS.Calculator },
     { path: '/quotes', label: 'Presupuestos', icon: ICONS.Quotes },
-    { path: '/materials', label: 'Materiales', icon: ICONS.Materials },
+    { path: '/receipts', label: 'Recibos', icon: () => <span>🎫</span> },
+    { path: '/materials', label: 'Insumos', icon: ICONS.Materials },
     { path: '/products', label: 'Catálogo', icon: ICONS.Products },
     { path: '/clients', label: 'Clientes', icon: ICONS.Clients },
   ];
@@ -35,7 +37,7 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
             <p className="text-[11px] text-brand-greige font-semibold tracking-[0.2em] uppercase mt-1">accesorios</p>
           </div>
         </div>
-        <nav className="mt-8">
+        <nav className="mt-8 overflow-y-auto h-[calc(100vh-140px)]">
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -63,9 +65,9 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
           </div>
         )}
         
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-brand-beige flex justify-around p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-50">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-brand-beige flex justify-around p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-50 overflow-x-auto">
             {navItems.map((item) => (
-                <Link key={item.path} to={item.path} className={`${location.pathname === item.path ? 'text-brand-sage scale-110' : 'text-brand-greige'} transition-transform`}>
+                <Link key={item.path} to={item.path} className={`${location.pathname === item.path ? 'text-brand-sage scale-110' : 'text-brand-greige'} transition-transform px-3`}>
                     <item.icon />
                 </Link>
             ))}
@@ -90,42 +92,43 @@ export default function App() {
 
   const handleUpdateMaterials = async (newMaterials: Material[]) => {
     if (!data) return;
-    const deletedIds = data.materials.filter(m => !newMaterials.find(nm => nm.id === m.id)).map(m => m.id);
     setData({...data, materials: newMaterials});
     await syncMaterialsBatch(newMaterials);
-    for (const id of deletedIds) await deleteFromSupabase('materials', id);
   };
 
   const handleUpdateProducts = async (newProducts: Product[]) => {
     if (!data) return;
-    const deletedIds = data.products.filter(p => !newProducts.find(np => np.id === p.id)).map(p => p.id);
     setData({...data, products: newProducts});
     for (const p of newProducts) await syncProduct(p);
-    for (const id of deletedIds) await deleteFromSupabase('products', id);
   };
 
   const handleUpdateClients = async (newClients: Client[]) => {
     if (!data) return;
-    const deletedIds = data.clients.filter(c => !newClients.find(nc => nc.id === c.id)).map(c => c.id);
     setData({...data, clients: newClients});
     await syncClientsBatch(newClients);
-    for (const id of deletedIds) await deleteFromSupabase('clients', id);
   };
 
-  const handleUpdateQuotes = async (newQuotes: Quote[]) => {
+  const handleUpdateQuotes = async (nextData: AppData) => {
     if (!data) return;
-    const deletedIds = data.quotes.filter(q => !newQuotes.find(nq => nq.id === q.id)).map(q => q.id);
-    setData({...data, quotes: newQuotes});
-    for (const q of newQuotes) await syncQuote(q);
-    for (const id of deletedIds) await deleteFromSupabase('quotes', id);
+    setData(nextData);
+    // Sincronizamos presupuestos
+    for (const q of nextData.quotes) await syncQuote(q);
+    // También sincronizamos recibos y transacciones si se generaron nuevos
+    for (const r of nextData.receipts) await syncReceipt(r);
+    await syncTransactionsBatch(nextData.transactions);
   };
 
   const handleUpdateTransactions = async (newTransactions: Transaction[]) => {
     if (!data) return;
-    const deletedIds = data.transactions.filter(t => !newTransactions.find(nt => nt.id === t.id)).map(t => t.id);
     setData({...data, transactions: newTransactions});
     await syncTransactionsBatch(newTransactions);
-    for (const id of deletedIds) await deleteFromSupabase('transactions', id);
+  };
+
+  const handleUpdateReceipts = async (nextData: AppData) => {
+    if (!data) return;
+    setData(nextData);
+    for (const r of nextData.receipts) await syncReceipt(r);
+    await syncTransactionsBatch(nextData.transactions);
   };
 
   if (!data && loading) return (
@@ -152,7 +155,11 @@ export default function App() {
           }} />} />
           <Route path="/quotes" element={<QuotesManager data={safeData} updateData={(up) => {
               const next = up(safeData);
-              handleUpdateQuotes(next.quotes);
+              handleUpdateQuotes(next);
+          }} />} />
+          <Route path="/receipts" element={<ReceiptsManager data={safeData} updateData={(up) => {
+              const next = up(safeData);
+              handleUpdateReceipts(next);
           }} />} />
           <Route path="/clients" element={<ClientsManager data={safeData} updateData={(up) => {
               const next = up(safeData);
@@ -174,6 +181,7 @@ const INITIAL_APP_DATA: AppData = {
   products: [],
   clients: [],
   quotes: [],
+  receipts: [],
   transactions: [],
-  settings: { brandName: 'Lala', defaultMargin: 50 }
+  settings: { brandName: 'Lala', defaultMargin: 50, whatsappNumber: '5491122334455' }
 };

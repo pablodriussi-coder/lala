@@ -10,14 +10,14 @@ export interface Material {
   name: string;
   unit: MaterialUnit;
   costPerUnit: number;
-  widthCm?: number; // Para telas (ancho comercial)
+  widthCm?: number;
 }
 
 export interface ProductMaterialRequirement {
   materialId: string;
-  quantity: number; // Para unidades o kg
-  widthCm?: number; // Para cortes de tela
-  heightCm?: number; // Para cortes de tela
+  quantity: number;
+  widthCm?: number;
+  heightCm?: number;
 }
 
 export interface Product {
@@ -26,6 +26,7 @@ export interface Product {
   description: string;
   materials: ProductMaterialRequirement[];
   baseLaborCost: number;
+  imageUrl?: string;
 }
 
 export interface Client {
@@ -55,6 +56,18 @@ export interface Quote {
   discountReason?: string;
 }
 
+export interface Receipt {
+  id: string;
+  quoteId: string;
+  clientId: string;
+  items: QuoteItem[];
+  totalPrice: number;
+  discountValue: number;
+  paymentMethod: string;
+  receiptNumber: string;
+  createdAt: number;
+}
+
 export type TransactionType = 'income' | 'expense';
 export type TransactionCategory = 'venta' | 'materia_prima' | 'mantenimiento' | 'servicios' | 'alquiler' | 'otros' | 'capital_inicial';
 
@@ -72,10 +85,12 @@ export interface AppData {
   products: Product[];
   clients: Client[];
   quotes: Quote[];
+  receipts: Receipt[];
   transactions: Transaction[];
   settings: {
     brandName: string;
     defaultMargin: number;
     initialFunds?: number;
+    whatsappNumber?: string;
   };
 }

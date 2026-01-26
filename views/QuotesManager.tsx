@@ -1,8 +1,8 @@
 
 import React, { useState, useRef } from 'react';
-import { AppData, Quote, QuoteItem, ProductMaterialRequirement, MaterialUnit } from '../types';
+import { AppData, Quote, QuoteItem, ProductMaterialRequirement, MaterialUnit, Receipt } from '../types';
 import { ICONS } from '../constants';
-import { generateMarketingText } from '../services/geminiService';
+import { syncReceipt, syncQuote } from '../store';
 import * as XLSX from 'xlsx';
 
 interface QuotesManagerProps {
@@ -14,10 +14,7 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
   const [quoteForPreview, setQuoteForPreview] = useState<Quote | null>(null);
-  const [marketingText, setMarketingText] = useState<string | null>(null);
-  const [isGeneratingMarketing, setIsGeneratingMarketing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<Partial<Quote>>({
@@ -32,14 +29,9 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
   const calculateRequirementCost = (req: ProductMaterialRequirement) => {
     const material = data.materials.find(m => m.id === req.materialId);
     if (!material) return 0;
-
     if (material.unit === MaterialUnit.METERS && req.widthCm && req.heightCm && material.widthCm) {
-        const areaNeeded = req.widthCm * req.heightCm;
-        const areaOneMeter = material.widthCm * 100;
-        const usagePercentage = areaNeeded / areaOneMeter;
-        return material.costPerUnit * usagePercentage;
+        return material.costPerUnit * ((req.widthCm * req.heightCm) / (material.widthCm * 100));
     }
-
     return material.costPerUnit * req.quantity;
   };
 
@@ -47,17 +39,46 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
     return items.reduce((acc, item) => {
       const product = data.products.find(p => p.id === item.productId);
       if (!product) return acc;
-      
-      const materialCost = product.materials.reduce((mAcc, req) => {
-        return mAcc + calculateRequirementCost(req);
-      }, 0);
-
+      const materialCost = product.materials.reduce((mAcc, req) => mAcc + calculateRequirementCost(req), 0);
       const unitCost = materialCost + (Number(product.baseLaborCost) || 0);
       return acc + (unitCost * item.quantity);
     }, 0);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const emitReceipt = async (quote: Quote) => {
+    const method = prompt("Ingrese el método de pago (Efectivo, Transferencia, Tarjeta, Otro):", "Efectivo");
+    if (!method) return;
+
+    const receipt: Receipt = {
+      id: crypto.randomUUID(),
+      quoteId: quote.id,
+      clientId: quote.clientId,
+      items: quote.items,
+      totalPrice: quote.totalPrice,
+      discountValue: quote.discountValue || 0,
+      paymentMethod: method,
+      receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
+      createdAt: Date.now()
+    };
+
+    updateData(prev => ({
+      ...prev,
+      receipts: [...prev.receipts, receipt],
+      transactions: [...prev.transactions, {
+        id: crypto.randomUUID(),
+        date: Date.now(),
+        type: 'income',
+        category: 'venta',
+        amount: quote.totalPrice,
+        description: `Venta concretada - Recibo ${receipt.receiptNumber}`
+      }]
+    }));
+
+    await syncReceipt(receipt);
+    return receipt;
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.clientId || (formData.items || []).length === 0) return alert('Selecciona cliente y productos.');
 
@@ -79,6 +100,15 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
       discountReason: formData.discountReason || ''
     };
 
+    // Verificamos si acaba de pasar a aceptado para ofrecer el recibo
+    const oldQuote = editingId ? data.quotes.find(q => q.id === editingId) : null;
+    const oldStatus = oldQuote ? oldQuote.status : null;
+    
+    // Es aceptado si:
+    // 1. Es nuevo y estado es accepted
+    // 2. Es viejo y su estado anterior NO era accepted, pero el nuevo SI lo es
+    const isNowAccepted = quoteData.status === 'accepted' && oldStatus !== 'accepted';
+
     updateData(prev => ({
       ...prev,
       quotes: editingId 
@@ -87,33 +117,27 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
     }));
 
     closeModal();
-  };
 
-  const openEdit = (quote: Quote) => {
-    setEditingId(quote.id);
-    setFormData(quote);
-    setIsModalOpen(true);
-  };
-
-  const openPreview = (quote: Quote) => {
-    setQuoteForPreview(quote);
-    setIsPreviewOpen(true);
+    if (isNowAccepted) {
+      setTimeout(() => {
+        if (confirm("¿Deseas emitir el recibo de venta y registrar el ingreso ahora?")) {
+            emitReceipt(quoteData).then(() => {
+                alert("¡Venta concretada y recibo generado!");
+            });
+        }
+      }, 100);
+    }
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
     setFormData({ clientId: '', profitMarginPercent: data.settings.defaultMargin, items: [], status: 'pending', discountValue: 0, discountReason: '' });
-    setMarketingText(null);
-    setSelectedQuoteId(null);
   };
 
-  const handleGenerateMarketing = async (quote: Quote) => {
-    setSelectedQuoteId(quote.id);
-    setIsGeneratingMarketing(true);
-    const text = await generateMarketingText(quote, data.products, data.materials);
-    setMarketingText(text);
-    setIsGeneratingMarketing(false);
+  const openPreview = (quote: Quote) => {
+    setQuoteForPreview(quote);
+    setIsPreviewOpen(true);
   };
 
   const addItem = () => {
@@ -136,20 +160,95 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
     setFormData(prev => ({ ...prev, items: (prev.items || []).filter((_, i) => i !== index) }));
   };
 
-  const handlePrint = () => {
-    window.print();
+  const exportToExcel = () => {
+    const mainQuotes = data.quotes.map(q => ({
+      ID: q.id,
+      Cliente: data.clients.find(c => c.id === q.clientId)?.name || 'Desconocido',
+      ClienteID: q.clientId,
+      Fecha: new Date(q.createdAt).toLocaleDateString(),
+      Estado: q.status,
+      MargenPercent: q.profitMarginPercent,
+      CostoTotal: q.totalCost,
+      PrecioFinal: q.totalPrice,
+      Descuento: q.discountValue || 0,
+      MotivoDescuento: q.discountReason || ''
+    }));
+
+    const quoteItems: any[] = [];
+    data.quotes.forEach(q => {
+      q.items.forEach(item => {
+        const p = data.products.find(prod => prod.id === item.productId);
+        quoteItems.push({
+          PresupuestoID: q.id,
+          Producto: p?.name || 'Desconocido',
+          ProductoID: item.productId,
+          Cantidad: item.quantity
+        });
+      });
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.json_to_sheet(mainQuotes);
+    const ws2 = XLSX.utils.json_to_sheet(quoteItems);
+    XLSX.utils.book_append_sheet(wb, ws1, "Presupuestos");
+    XLSX.utils.book_append_sheet(wb, ws2, "Items");
+    XLSX.writeFile(wb, "Lala_Presupuestos.xlsx");
+  };
+
+  const importFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const bstr = event.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsMain = wb.Sheets["Presupuestos"];
+        const wsItems = wb.Sheets["Items"];
+        
+        const importedMain = XLSX.utils.sheet_to_json(wsMain) as any[];
+        const importedItems = XLSX.utils.sheet_to_json(wsItems) as any[];
+
+        const finalQuotes: Quote[] = importedMain.map(row => {
+          const items = importedItems
+            .filter(item => item.PresupuestoID === row.ID)
+            .map(item => ({
+              productId: item.ProductoID,
+              quantity: Number(item.Cantidad) || 1
+            }));
+
+          return {
+            id: row.ID || crypto.randomUUID(),
+            clientId: row.ClienteID,
+            items,
+            profitMarginPercent: Number(row.MargenPercent) || data.settings.defaultMargin,
+            createdAt: row.Fecha ? new Date(row.Fecha).getTime() : Date.now(),
+            totalCost: Number(row.CostoTotal) || 0,
+            totalPrice: Number(row.PrecioFinal) || 0,
+            status: row.Estado as any,
+            discountValue: Number(row.Descuento) || 0,
+            discountReason: row.MotivoDescuento || ''
+          };
+        });
+
+        if (confirm(`¿Importar ${finalQuotes.length} presupuestos? Esto actualizará la base de datos.`)) {
+          updateData(prev => ({ ...prev, quotes: finalQuotes }));
+        }
+      } catch (err) {
+        alert("Error procesando Excel de presupuestos. Asegúrate de que las pestañas se llamen 'Presupuestos' e 'Items'.");
+      }
+    };
+    reader.readAsBinaryString(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const BrandLogo = () => (
     <div className="flex flex-col select-none">
       <div className="flex items-start gap-1">
         <div className="flex flex-col">
-          <h1 className="text-[85px] font-black text-brand-dark leading-[0.7] tracking-[-0.04em]">
-            Lala
-          </h1>
-          <span className="text-2xl text-brand-dark font-medium tracking-[0.28em] mt-5 ml-1 opacity-90 uppercase">
-            accesorios
-          </span>
+          <h1 className="text-[85px] font-black text-brand-dark leading-[0.7] tracking-[-0.04em]">Lala</h1>
+          <span className="text-2xl text-brand-dark font-medium tracking-[0.28em] mt-5 ml-1 opacity-90 uppercase">accesorios</span>
         </div>
         <div className="pt-2 ml-1">
           <svg width="50" height="50" viewBox="0 0 24 24" className="text-brand-red fill-current">
@@ -168,6 +267,9 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
           <p className="text-brand-greige font-medium">Cotizaciones personalizadas para clientes</p>
         </div>
         <div className="flex flex-wrap gap-3">
+          <input type="file" className="hidden" ref={fileInputRef} onChange={importFromExcel} accept=".xlsx,.xls" />
+          <button onClick={() => fileInputRef.current?.click()} className="bg-brand-white text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige font-bold text-sm">📥 Importar Excel</button>
+          <button onClick={exportToExcel} className="bg-brand-white text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige font-bold text-sm">📤 Exportar Excel</button>
           <button onClick={() => setIsModalOpen(true)} className="bg-brand-sage text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 font-bold group transition-all hover:bg-brand-dark">
             <ICONS.Add />
             <span>Nueva Cotización</span>
@@ -178,6 +280,7 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 print:hidden">
         {data.quotes.length > 0 ? [...data.quotes].reverse().map(quote => {
           const client = data.clients.find(c => c.id === quote.clientId);
+          const hasReceipt = data.receipts.some(r => r.quoteId === quote.id);
           return (
             <div key={quote.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-brand-beige hover:shadow-xl transition-all relative flex flex-col">
               <div className="flex justify-between items-start mb-6">
@@ -207,12 +310,21 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
               <div className="border-t border-brand-white pt-6 flex flex-col gap-4">
                 <div className="flex justify-between items-end">
                     <div>
-                        <p className="text-[9px] text-brand-greige font-black uppercase tracking-[0.2em]">Total con Descuento</p>
+                        <p className="text-[9px] text-brand-greige font-black uppercase tracking-[0.2em]">Total Final</p>
                         <p className="text-3xl font-bold text-brand-sage">${quote.totalPrice.toFixed(2)}</p>
                     </div>
                     <div className="flex gap-2">
+                        {quote.status === 'accepted' && !hasReceipt && (
+                          <button 
+                            onClick={() => emitReceipt(quote)}
+                            title="Emitir Recibo"
+                            className="p-3 bg-brand-sage text-white rounded-xl hover:bg-brand-dark transition-all"
+                          >
+                            🎫
+                          </button>
+                        )}
                         <button onClick={() => openPreview(quote)} className="p-3 bg-brand-beige text-brand-dark rounded-xl hover:bg-brand-sage hover:text-white transition-all">📄</button>
-                        <button onClick={() => openEdit(quote)} className="p-3 bg-brand-white border border-brand-beige text-brand-dark rounded-xl hover:bg-brand-beige transition-all">✏️</button>
+                        <button onClick={() => { setEditingId(quote.id); setFormData(quote); setIsModalOpen(true); }} className="p-3 bg-brand-white border border-brand-beige text-brand-dark rounded-xl hover:bg-brand-beige transition-all">✏️</button>
                     </div>
                 </div>
               </div>
@@ -225,15 +337,10 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
         )}
       </div>
 
-      {/* Modal Principal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-brand-dark/30 backdrop-blur-md flex items-center justify-center z-50 p-4 print:hidden">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-slideUp border border-brand-beige">
-            <div className="p-10">
-              <div className="flex justify-between items-center mb-10">
-                <h3 className="text-2xl font-bold text-brand-dark">{editingId ? 'Editar Cotización' : 'Nueva Cotización'}</h3>
-                <span className="text-brand-red text-2xl">★</span>
-              </div>
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-brand-beige p-10 animate-slideUp">
+              <h3 className="text-2xl font-bold text-brand-dark mb-10">Configurar Cotización</h3>
               <form onSubmit={handleSave} className="space-y-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   <div className="space-y-6">
@@ -259,29 +366,16 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
                       </div>
                     </div>
                     
-                    {/* SECCIÓN DE DESCUENTO */}
                     <div className="bg-brand-white/50 p-6 rounded-[2rem] border border-dashed border-brand-beige space-y-4">
-                      <p className="text-[10px] font-black text-brand-dark uppercase tracking-widest text-center">Aplicar Bonificación / Descuento</p>
+                      <p className="text-[10px] font-black text-brand-dark uppercase tracking-widest text-center">Descuentos</p>
                       <div className="flex gap-4">
                          <div className="w-1/3">
                             <label className="block text-[9px] font-bold text-brand-greige mb-1">Monto ($)</label>
-                            <input 
-                                type="number" 
-                                value={formData.discountValue} 
-                                onChange={e => setFormData({...formData, discountValue: Number(e.target.value)})}
-                                className="w-full px-4 py-3 rounded-xl bg-white border border-brand-beige font-bold text-brand-red outline-none focus:border-brand-red"
-                                placeholder="0.00"
-                            />
+                            <input type="number" value={formData.discountValue} onChange={e => setFormData({...formData, discountValue: Number(e.target.value)})} className="w-full px-4 py-3 rounded-xl bg-white border border-brand-beige font-bold" />
                          </div>
                          <div className="flex-1">
-                            <label className="block text-[9px] font-bold text-brand-greige mb-1">Motivo / Descripción</label>
-                            <input 
-                                type="text" 
-                                value={formData.discountReason} 
-                                onChange={e => setFormData({...formData, discountReason: e.target.value})}
-                                className="w-full px-4 py-3 rounded-xl bg-white border border-brand-beige font-medium text-sm outline-none focus:border-brand-sage"
-                                placeholder="Ej: Pago efectivo, Por mayor..."
-                            />
+                            <label className="block text-[9px] font-bold text-brand-greige mb-1">Motivo</label>
+                            <input type="text" value={formData.discountReason} onChange={e => setFormData({...formData, discountReason: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white border border-brand-beige" />
                          </div>
                       </div>
                     </div>
@@ -289,88 +383,70 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
 
                   <div className="space-y-6">
                     <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-black text-brand-greige uppercase tracking-widest">Productos</label>
-                      <button type="button" onClick={addItem} className="text-[10px] bg-brand-dark text-white font-black px-4 py-2 rounded-full hover:bg-brand-sage transition-all shadow-md">
-                        + AGREGAR
-                      </button>
+                      <label className="text-[10px] font-black text-brand-greige uppercase tracking-widest">Items</label>
+                      <button type="button" onClick={addItem} className="text-[10px] bg-brand-dark text-white font-black px-4 py-2 rounded-full">+ AGREGAR</button>
                     </div>
-                    <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
                       {(formData.items || []).map((item, idx) => (
-                        <div key={idx} className="flex gap-3 items-center bg-brand-white p-4 rounded-2xl border border-brand-beige/50 group">
-                          <select value={item.productId} onChange={e => updateItem(idx, 'productId', e.target.value)} className="flex-1 text-xs font-bold border-none bg-transparent text-brand-dark outline-none">
+                        <div key={idx} className="flex gap-3 items-center bg-brand-white p-4 rounded-2xl border border-brand-beige/50">
+                          <select value={item.productId} onChange={e => updateItem(idx, 'productId', e.target.value)} className="flex-1 text-xs font-bold border-none bg-transparent">
                             {data.products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                           </select>
-                          <input type="number" min="1" value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} className="w-16 text-xs text-center font-bold border-none bg-white rounded-lg py-2 shadow-sm" />
-                          <button type="button" onClick={() => removeItem(idx)} className="text-brand-red opacity-30 hover:opacity-100 transition-opacity">✕</button>
+                          <input type="number" min="1" value={item.quantity} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} className="w-16 text-xs text-center font-bold bg-white rounded-lg py-2" />
+                          <button type="button" onClick={() => removeItem(idx)} className="text-brand-red opacity-30 hover:opacity-100">✕</button>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-brand-white p-10 rounded-[2.5rem] border border-brand-beige flex flex-col md:flex-row justify-between items-center gap-8">
-                  <div className="text-center md:text-left">
-                    <p className="text-[10px] text-brand-greige font-black uppercase tracking-[0.2em] mb-1">Total Final Estimado</p>
-                    <div className="flex items-baseline gap-2">
-                        <p className="text-5xl font-bold text-brand-sage">
-                        ${((calculateCosts(formData.items || [])) * (1 + (Number(formData.profitMarginPercent) || 0) / 100) - (formData.discountValue || 0)).toFixed(2)}
-                        </p>
-                        {formData.discountValue > 0 && <span className="text-brand-red font-bold text-xs">(-${formData.discountValue})</span>}
-                    </div>
+                <div className="bg-brand-white p-8 rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-8">
+                  <div>
+                    <p className="text-[10px] text-brand-greige font-black uppercase tracking-[0.2em]">Precio Final Estimado</p>
+                    <p className="text-4xl font-bold text-brand-sage">${(calculateCosts(formData.items || []) * (1 + (formData.profitMarginPercent || 0)/100) - (formData.discountValue || 0)).toFixed(2)}</p>
                   </div>
-                  <div className="flex gap-6 w-full md:w-auto">
-                    <button type="button" onClick={closeModal} className="flex-1 px-8 py-5 text-brand-greige font-bold hover:text-brand-dark">Cerrar</button>
-                    <button type="submit" className="flex-[2] bg-brand-sage text-white px-12 py-5 rounded-[1.5rem] font-bold shadow-2xl shadow-brand-sage/20 hover:bg-brand-dark transition-all">
-                      Confirmar
-                    </button>
+                  <div className="flex gap-4">
+                    <button type="button" onClick={closeModal} className="px-8 py-4 font-bold text-brand-greige">Cancelar</button>
+                    <button type="submit" className="bg-brand-sage text-white px-10 py-4 rounded-2xl font-bold">Guardar Cambios</button>
                   </div>
                 </div>
               </form>
-            </div>
           </div>
         </div>
       )}
 
-      {/* Vista Previa Impresión (PDF) */}
       {isPreviewOpen && quoteForPreview && (
-        <div className="fixed inset-0 bg-brand-dark/50 backdrop-blur-xl flex items-start justify-center z-[100] p-4 md:p-10 overflow-y-auto print:bg-white print:p-0 print:block">
-          <div className="bg-white w-full max-w-[800px] shadow-2xl min-h-[1000px] flex flex-col print:shadow-none print:max-w-none print:w-full">
-            <div className="bg-brand-white p-6 flex justify-between items-center border-b border-brand-beige print:hidden sticky top-0 z-10">
-              <button onClick={() => setIsPreviewOpen(false)} className="text-brand-greige hover:text-brand-dark flex items-center gap-2">✕ Cerrar</button>
-              <button onClick={handlePrint} className="bg-brand-dark text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-sage">Imprimir / PDF</button>
+        <div className="fixed inset-0 bg-brand-dark/50 backdrop-blur-xl flex items-start justify-center z-[100] p-4 md:p-10 overflow-y-auto print:bg-white print:p-0">
+          <div className="bg-white w-full max-w-[800px] shadow-2xl min-h-[1000px] flex flex-col print:shadow-none">
+            <div className="bg-brand-white p-6 flex justify-between items-center border-b border-brand-beige print:hidden sticky top-0">
+              <button onClick={() => setIsPreviewOpen(false)} className="text-brand-greige hover:text-brand-dark">✕ Cerrar</button>
+              <button onClick={() => window.print()} className="bg-brand-dark text-white px-6 py-2 rounded-xl font-bold">Imprimir / PDF</button>
             </div>
-
-            <div className="p-12 md:p-20 flex-1 flex flex-col print:p-8">
+            <div className="p-12 md:p-20 flex-1 flex flex-col">
                <div className="flex justify-between items-start mb-20">
                   <BrandLogo />
                   <div className="text-right pt-4">
-                    <h3 className="text-3xl font-black text-brand-dark uppercase tracking-[0.2em] mb-2">PRESUPUESTO</h3>
+                    <h3 className="text-3xl font-black text-brand-dark uppercase tracking-[0.2em] mb-2">COTIZACIÓN</h3>
                     <p className="text-brand-greige font-bold text-sm">#PRE-{quoteForPreview.id.slice(0, 8).toUpperCase()}</p>
                     <p className="text-brand-greige font-bold text-sm">{new Date(quoteForPreview.createdAt).toLocaleDateString()}</p>
                   </div>
                </div>
-
                <div className="grid grid-cols-2 gap-10 mb-16 pb-10 border-b-2 border-brand-white">
                  <div>
                     <h4 className="text-[10px] font-black text-brand-greige uppercase tracking-widest mb-4">CLIENTE</h4>
                     <p className="text-xl font-bold text-brand-dark mb-1">{data.clients.find(c => c.id === quoteForPreview.clientId)?.name}</p>
-                    <p className="text-brand-greige text-sm font-medium">{data.clients.find(c => c.id === quoteForPreview.clientId)?.phone}</p>
-                    <p className="text-brand-greige text-sm font-medium">{data.clients.find(c => c.id === quoteForPreview.clientId)?.address}</p>
                  </div>
                  <div className="text-right">
-                    <h4 className="text-[10px] font-black text-brand-greige uppercase tracking-widest mb-4">DE PARTE DE</h4>
+                    <h4 className="text-[10px] font-black text-brand-greige uppercase tracking-widest mb-4">DE</h4>
                     <p className="text-xl font-bold text-brand-dark mb-1">{data.settings.brandName}</p>
-                    <p className="text-brand-greige text-sm font-medium italic">Confecciones artesanales para bebés.</p>
                  </div>
                </div>
-
                <table className="w-full text-left mb-10">
-                 <thead>
-                    <tr className="bg-brand-white/50">
-                       <th className="px-6 py-4 text-[10px] font-black text-brand-greige uppercase tracking-widest">Descripción</th>
-                       <th className="px-6 py-4 text-[10px] font-black text-brand-greige uppercase tracking-widest text-center">Cant.</th>
-                       <th className="px-6 py-4 text-[10px] font-black text-brand-greige uppercase tracking-widest text-right">Unitario</th>
-                       <th className="px-6 py-4 text-[10px] font-black text-brand-greige uppercase tracking-widest text-right">Subtotal</th>
+                 <thead className="bg-brand-white/50">
+                    <tr className="text-[10px] font-black text-brand-greige uppercase tracking-widest">
+                       <th className="px-6 py-4">Descripción</th>
+                       <th className="px-6 py-4 text-center">Cant.</th>
+                       <th className="px-6 py-4 text-right">Subtotal</th>
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-brand-white">
@@ -378,48 +454,33 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
                       const p = data.products.find(prod => prod.id === item.productId);
                       if (!p) return null;
                       const materialCost = p.materials.reduce((mAcc, req) => mAcc + calculateRequirementCost(req), 0);
-                      const baseUnitCost = materialCost + (Number(p.baseLaborCost) || 0);
-                      const unitPrice = baseUnitCost * (1 + quoteForPreview.profitMarginPercent / 100);
+                      const unitPrice = (materialCost + (Number(p.baseLaborCost) || 0)) * (1 + quoteForPreview.profitMarginPercent / 100);
                       return (
-                        <tr key={idx}>
-                          <td className="px-6 py-6 font-bold text-brand-dark">{p.name}</td>
-                          <td className="px-6 py-6 text-center font-bold text-brand-dark">{item.quantity}</td>
-                          <td className="px-6 py-6 text-right font-bold text-brand-dark">${unitPrice.toFixed(2)}</td>
-                          <td className="px-6 py-6 text-right font-bold text-brand-dark">${(unitPrice * item.quantity).toFixed(2)}</td>
+                        <tr key={idx} className="text-sm font-bold text-brand-dark">
+                          <td className="px-6 py-6">{p.name}</td>
+                          <td className="px-6 py-6 text-center">{item.quantity}</td>
+                          <td className="px-6 py-6 text-right">${(unitPrice * item.quantity).toFixed(2)}</td>
                         </tr>
                       );
                     })}
                  </tbody>
                </table>
-
                <div className="mt-auto pt-10 flex justify-end">
                   <div className="w-full max-w-[350px] space-y-3">
                      <div className="flex justify-between items-center text-sm font-bold text-brand-greige">
                         <span>SUBTOTAL</span>
                         <span>${(quoteForPreview.totalPrice + (quoteForPreview.discountValue || 0)).toFixed(2)}</span>
                      </div>
-                     
                      {quoteForPreview.discountValue && quoteForPreview.discountValue > 0 && (
                         <div className="flex justify-between items-center text-sm font-bold text-brand-red">
-                           <div className="flex flex-col">
-                                <span>DESCUENTO</span>
-                                <span className="text-[10px] italic opacity-70">{quoteForPreview.discountReason || 'Descuento aplicado'}</span>
-                           </div>
+                           <span>DESCUENTO</span>
                            <span>-${quoteForPreview.discountValue.toFixed(2)}</span>
                         </div>
                      )}
-
                      <div className="flex justify-between items-center border-t-4 border-brand-dark pt-4">
-                        <span className="text-xl font-black text-brand-dark uppercase tracking-widest">TOTAL FINAL</span>
+                        <span className="text-xl font-black text-brand-dark uppercase tracking-widest">TOTAL</span>
                         <span className="text-4xl font-black text-brand-sage">${quoteForPreview.totalPrice.toFixed(2)}</span>
                      </div>
-                  </div>
-               </div>
-
-               <div className="mt-20 pt-10 border-t border-brand-white text-center">
-                  <p className="text-sm text-brand-greige italic">Gracias por elegir Lala accesorios.</p>
-                  <div className="mt-8 flex justify-center gap-2 text-brand-sage opacity-30">
-                    <span>★</span><span>★</span><span>★</span>
                   </div>
                </div>
             </div>
