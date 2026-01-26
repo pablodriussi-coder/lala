@@ -51,6 +51,8 @@ export interface Quote {
   totalCost: number;
   totalPrice: number;
   status: 'pending' | 'accepted' | 'rejected';
+  discountValue?: number;
+  discountReason?: string;
 }
 
 export type TransactionType = 'income' | 'expense';

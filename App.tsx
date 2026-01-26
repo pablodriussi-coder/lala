@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { loadData, saveData } from './store';
-import { AppData, Material, Product, Client, Quote, MaterialUnit } from './types';
+import { AppData } from './types';
 import { ICONS } from './constants';
 import Dashboard from './views/Dashboard';
 import MaterialsManager from './views/MaterialsManager';
@@ -10,6 +10,7 @@ import ProductsManager from './views/ProductsManager';
 import QuotesManager from './views/QuotesManager';
 import ClientsManager from './views/ClientsManager';
 import AccountingManager from './views/AccountingManager';
+import QuickCalculator from './views/QuickCalculator';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -17,6 +18,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navItems = [
     { path: '/', label: 'Inicio', icon: ICONS.Dashboard },
     { path: '/accounting', label: 'Contabilidad', icon: ICONS.Accounting },
+    { path: '/calculator', label: 'Calculadora', icon: ICONS.Calculator },
     { path: '/quotes', label: 'Presupuestos', icon: ICONS.Quotes },
     { path: '/materials', label: 'Materiales', icon: ICONS.Materials },
     { path: '/products', label: 'Catálogo', icon: ICONS.Products },
@@ -86,10 +88,7 @@ export default function App() {
   }, [data]);
 
   const updateData = (updater: (prev: AppData) => AppData) => {
-    setData(prev => {
-        const next = updater(prev);
-        return next;
-    });
+    setData(prev => updater(prev));
   };
 
   return (
@@ -102,6 +101,7 @@ export default function App() {
           <Route path="/quotes" element={<QuotesManager data={data} updateData={updateData} />} />
           <Route path="/clients" element={<ClientsManager data={data} updateData={updateData} />} />
           <Route path="/accounting" element={<AccountingManager data={data} updateData={updateData} />} />
+          <Route path="/calculator" element={<QuickCalculator />} />
         </Routes>
       </Layout>
     </HashRouter>
