@@ -80,22 +80,32 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const bstr = event.target?.result;
-      const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const importedData = XLSX.utils.sheet_to_json(ws) as any[];
+      try {
+        const bstr = event.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const importedData = XLSX.utils.sheet_to_json(ws) as any[];
 
-      const updatedMaterials: Material[] = importedData.map(row => ({
-        id: row.ID || crypto.randomUUID(),
-        name: row.Nombre || 'Sin nombre',
-        unit: (row.Unidad || 'm') as MaterialUnit,
-        costPerUnit: Number(row.CostoUnitario) || 0,
-        widthCm: row.AnchoComercialCm ? Number(row.AnchoComercialCm) : undefined
-      }));
+        const updatedMaterials: Material[] = importedData.map(row => {
+          // Validar que el ID sea un UUID, si no, crear uno nuevo
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          const id = (row.ID && uuidRegex.test(row.ID)) ? row.ID : crypto.randomUUID();
+          
+          return {
+            id,
+            name: row.Nombre || 'Sin nombre',
+            unit: (row.Unidad || 'm') as MaterialUnit,
+            costPerUnit: Number(row.CostoUnitario) || 0,
+            widthCm: row.AnchoComercialCm ? Number(row.AnchoComercialCm) : undefined
+          };
+        });
 
-      if (confirm(`Se han detectado ${updatedMaterials.length} materiales. ¿Deseas sobreescribir la base de datos actual?`)) {
-        updateData(prev => ({ ...prev, materials: updatedMaterials }));
+        if (confirm(`Se han detectado ${updatedMaterials.length} materiales. ¿Deseas sobreescribir la base de datos actual?`)) {
+          updateData(prev => ({ ...prev, materials: updatedMaterials }));
+        }
+      } catch (err) {
+        alert("Error procesando el archivo Excel. Verifica el formato.");
       }
     };
     reader.readAsBinaryString(file);
@@ -110,29 +120,10 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
           <p className="text-brand-greige font-medium">Telas, hilos, broches y rellenos</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <input 
-            type="file" 
-            accept=".xlsx, .xls" 
-            ref={fileInputRef} 
-            onChange={importFromExcel} 
-            className="hidden" 
-          />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
-          >
-            📥 Importar Excel
-          </button>
-          <button 
-            onClick={exportToExcel}
-            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
-          >
-            📤 Exportar Excel
-          </button>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
-          >
+          <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={importFromExcel} className="hidden" />
+          <button onClick={() => fileInputRef.current?.click()} className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm">📥 Importar Excel</button>
+          <button onClick={exportToExcel} className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm">📤 Exportar Excel</button>
+          <button onClick={() => setIsModalOpen(true)} className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group">
             <ICONS.Add />
             <span className="group-hover:translate-x-1 transition-transform">Nuevo Material</span>
           </button>
@@ -179,63 +170,29 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
         <div className="fixed inset-0 bg-brand-dark/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-brand-beige animate-slideUp">
             <div className="p-10 space-y-8">
-              <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-bold text-brand-dark">{editingId ? 'Actualizar' : 'Registrar'} Material</h3>
-                <span className="text-brand-red">★</span>
-              </div>
+              <h3 className="text-2xl font-bold text-brand-dark">{editingId ? 'Actualizar' : 'Registrar'} Material</h3>
               <form onSubmit={handleSave} className="space-y-6">
                 <div>
                   <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Nombre del Insumo</label>
-                  <input 
-                    type="text" required
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige focus:border-brand-sage focus:ring-0 outline-none transition-all placeholder:text-brand-greige/50"
-                    placeholder="Ej: Tela Muselina Sage"
-                  />
+                  <input type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none" placeholder="Ej: Tela Muselina Sage" />
                 </div>
                 <div className="grid grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Unidad de Medida</label>
-                    <select 
-                      value={formData.unit}
-                      onChange={e => setFormData({ ...formData, unit: e.target.value as MaterialUnit })}
-                      className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige focus:border-brand-sage outline-none"
-                    >
+                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Unidad</label>
+                    <select value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value as MaterialUnit })} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none">
                       <option value={MaterialUnit.METERS}>Metros (m)</option>
                       <option value={MaterialUnit.UNITS}>Unidades (u)</option>
                       <option value={MaterialUnit.KILOGRAMS}>Kilos (kg)</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Precio de Costo</label>
-                    <input 
-                      type="number" step="0.01" required
-                      value={formData.costPerUnit}
-                      onChange={e => setFormData({ ...formData, costPerUnit: Number(e.target.value) })}
-                      className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige focus:border-brand-sage outline-none"
-                    />
+                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Costo</label>
+                    <input type="number" step="0.01" required value={formData.costPerUnit} onChange={e => setFormData({ ...formData, costPerUnit: Number(e.target.value) })} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none" />
                   </div>
                 </div>
-
-                {formData.unit === MaterialUnit.METERS && (
-                   <div className="animate-fadeIn">
-                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Ancho Comercial (cm)</label>
-                    <input 
-                      type="number" required
-                      value={formData.widthCm}
-                      onChange={e => setFormData({ ...formData, widthCm: Number(e.target.value) })}
-                      className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige focus:border-brand-sage outline-none font-bold"
-                    />
-                    <p className="text-[10px] text-brand-greige mt-2 italic">Esto servirá para calcular el costo por retazos en los productos.</p>
-                  </div>
-                )}
-
                 <div className="flex gap-4 pt-4">
-                  <button type="button" onClick={closeModal} className="flex-1 py-4 text-brand-greige font-bold hover:text-brand-dark transition-colors">Cerrar</button>
-                  <button type="submit" className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold shadow-xl shadow-brand-sage/10 hover:bg-brand-dark transition-all">
-                    Confirmar Guardado
-                  </button>
+                  <button type="button" onClick={closeModal} className="flex-1 py-4 text-brand-greige font-bold">Cerrar</button>
+                  <button type="submit" className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold hover:bg-brand-dark transition-all">Confirmar Guardado</button>
                 </div>
               </form>
             </div>

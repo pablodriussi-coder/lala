@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { fetchAllData, syncMaterial, syncClient, syncQuote, syncTransaction, syncProduct, deleteFromSupabase } from './store';
+import { fetchAllData, syncMaterialsBatch, syncClientsBatch, syncTransactionsBatch, syncQuote, syncProduct, deleteFromSupabase } from './store';
 import { AppData, Material, Product, Client, Quote, Transaction } from './types';
 import { ICONS } from './constants';
 import Dashboard from './views/Dashboard';
@@ -14,7 +14,6 @@ import QuickCalculator from './views/QuickCalculator';
 
 const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ children, isLoading }) => {
   const location = useLocation();
-  
   const navItems = [
     { path: '/', label: 'Inicio', icon: ICONS.Dashboard },
     { path: '/accounting', label: 'Contabilidad', icon: ICONS.Accounting },
@@ -27,7 +26,6 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
 
   return (
     <div className="flex h-screen bg-brand-white overflow-hidden">
-      {/* Sidebar */}
       <aside className="w-64 bg-white shadow-xl z-10 border-r border-brand-beige hidden md:block">
         <div className="p-8">
           <div className="flex flex-col">
@@ -38,26 +36,21 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
           </div>
         </div>
         <nav className="mt-8">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-8 py-5 transition-all duration-300 ${
-                  isActive ? 'sidebar-item-active' : 'text-gray-400 hover:bg-brand-white hover:text-brand-sage'
-                }`}
-              >
-                <Icon />
-                <span className="font-semibold">{item.label}</span>
-              </Link>
-            );
-          })}
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex items-center gap-3 px-8 py-5 transition-all duration-300 ${
+                location.pathname === item.path ? 'sidebar-item-active' : 'text-gray-400 hover:bg-brand-white hover:text-brand-sage'
+              }`}
+            >
+              <item.icon />
+              <span className="font-semibold">{item.label}</span>
+            </Link>
+          ))}
         </nav>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 overflow-y-auto relative">
         {isLoading ? (
           <div className="h-full flex flex-col items-center justify-center space-y-4">
@@ -70,17 +63,12 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
           </div>
         )}
         
-        {/* Mobile Navigation */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-brand-beige flex justify-around p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-50">
-            {navItems.map((item) => {
-                const isActive = location.pathname === item.path;
-                const Icon = item.icon;
-                return (
-                    <Link key={item.path} to={item.path} className={`${isActive ? 'text-brand-sage scale-110' : 'text-brand-greige'} transition-transform`}>
-                        <Icon />
-                    </Link>
-                );
-            })}
+            {navItems.map((item) => (
+                <Link key={item.path} to={item.path} className={`${location.pathname === item.path ? 'text-brand-sage scale-110' : 'text-brand-greige'} transition-transform`}>
+                    <item.icon />
+                </Link>
+            ))}
         </div>
       </main>
     </div>
@@ -102,61 +90,41 @@ export default function App() {
 
   const handleUpdateMaterials = async (newMaterials: Material[]) => {
     if (!data) return;
-    const oldIds = data.materials.map(m => m.id);
-    const newIds = newMaterials.map(m => m.id);
-    const deletedIds = oldIds.filter(id => !newIds.includes(id));
-    
+    const deletedIds = data.materials.filter(m => !newMaterials.find(nm => nm.id === m.id)).map(m => m.id);
     setData({...data, materials: newMaterials});
-    
-    for (const m of newMaterials) await syncMaterial(m);
+    await syncMaterialsBatch(newMaterials);
     for (const id of deletedIds) await deleteFromSupabase('materials', id);
   };
 
   const handleUpdateProducts = async (newProducts: Product[]) => {
     if (!data) return;
-    const oldIds = data.products.map(p => p.id);
-    const newIds = newProducts.map(p => p.id);
-    const deletedIds = oldIds.filter(id => !newIds.includes(id));
-
+    const deletedIds = data.products.filter(p => !newProducts.find(np => np.id === p.id)).map(p => p.id);
     setData({...data, products: newProducts});
-
     for (const p of newProducts) await syncProduct(p);
     for (const id of deletedIds) await deleteFromSupabase('products', id);
   };
 
   const handleUpdateClients = async (newClients: Client[]) => {
     if (!data) return;
-    const oldIds = data.clients.map(c => c.id);
-    const newIds = newClients.map(c => c.id);
-    const deletedIds = oldIds.filter(id => !newIds.includes(id));
-
+    const deletedIds = data.clients.filter(c => !newClients.find(nc => nc.id === c.id)).map(c => c.id);
     setData({...data, clients: newClients});
-    
-    for (const c of newClients) await syncClient(c);
+    await syncClientsBatch(newClients);
     for (const id of deletedIds) await deleteFromSupabase('clients', id);
   };
 
   const handleUpdateQuotes = async (newQuotes: Quote[]) => {
     if (!data) return;
-    const oldIds = data.quotes.map(q => q.id);
-    const newIds = newQuotes.map(q => q.id);
-    const deletedIds = oldIds.filter(id => !newIds.includes(id));
-
+    const deletedIds = data.quotes.filter(q => !newQuotes.find(nq => nq.id === q.id)).map(q => q.id);
     setData({...data, quotes: newQuotes});
-    
     for (const q of newQuotes) await syncQuote(q);
     for (const id of deletedIds) await deleteFromSupabase('quotes', id);
   };
 
   const handleUpdateTransactions = async (newTransactions: Transaction[]) => {
     if (!data) return;
-    const oldIds = data.transactions.map(t => t.id);
-    const newIds = newTransactions.map(t => t.id);
-    const deletedIds = oldIds.filter(id => !newIds.includes(id));
-
+    const deletedIds = data.transactions.filter(t => !newTransactions.find(nt => nt.id === t.id)).map(t => t.id);
     setData({...data, transactions: newTransactions});
-    
-    for (const t of newTransactions) await syncTransaction(t);
+    await syncTransactionsBatch(newTransactions);
     for (const id of deletedIds) await deleteFromSupabase('transactions', id);
   };
 
@@ -167,7 +135,7 @@ export default function App() {
       </div>
   );
 
-  const safeData = data || { materials: [], products: [], clients: [], quotes: [], transactions: [], settings: { brandName: 'Lala', defaultMargin: 50 } };
+  const safeData = data || INITIAL_APP_DATA;
 
   return (
     <HashRouter>
@@ -200,3 +168,12 @@ export default function App() {
     </HashRouter>
   );
 }
+
+const INITIAL_APP_DATA: AppData = {
+  materials: [],
+  products: [],
+  clients: [],
+  quotes: [],
+  transactions: [],
+  settings: { brandName: 'Lala', defaultMargin: 50 }
+};

@@ -17,11 +17,11 @@ const INITIAL_DATA: AppData = {
 export const fetchAllData = async (): Promise<AppData> => {
   try {
     const [
-      { data: materials },
-      { data: products },
-      { data: clients },
-      { data: quotes },
-      { data: transactions }
+      { data: materials, error: mErr },
+      { data: products, error: pErr },
+      { data: clients, error: cErr },
+      { data: quotes, error: qErr },
+      { data: transactions, error: tErr }
     ] = await Promise.all([
       supabase.from('materials').select('*'),
       supabase.from('products').select('*, product_materials(*)'),
@@ -30,15 +30,18 @@ export const fetchAllData = async (): Promise<AppData> => {
       supabase.from('transactions').select('*')
     ]);
 
-    // Adaptar estructura de Supabase a los tipos de la App
+    if (mErr || pErr || cErr || qErr || tErr) {
+        console.error("Error cargando tablas:", { mErr, pErr, cErr, qErr, tErr });
+    }
+
     const adaptedProducts = (products || []).map(p => ({
       ...p,
       baseLaborCost: Number(p.base_labor_cost),
-      materials: p.product_materials.map((pm: any) => ({
+      materials: (p.product_materials || []).map((pm: any) => ({
         materialId: pm.material_id,
-        quantity: pm.quantity,
-        widthCm: pm.width_cm,
-        heightCm: pm.height_cm
+        quantity: Number(pm.quantity),
+        widthCm: pm.width_cm ? Number(pm.width_cm) : undefined,
+        heightCm: pm.height_cm ? Number(pm.height_cm) : undefined
       }))
     }));
 
@@ -47,12 +50,12 @@ export const fetchAllData = async (): Promise<AppData> => {
       totalCost: Number(q.total_cost),
       totalPrice: Number(q.total_price),
       profitMarginPercent: Number(q.profit_margin_percent),
-      discountValue: Number(q.discount_value),
-      discountReason: q.discount_reason,
+      discountValue: Number(q.discount_value || 0),
+      discountReason: q.discount_reason || '',
       createdAt: new Date(q.created_at).getTime(),
-      items: q.quote_items.map((qi: any) => ({
+      items: (q.quote_items || []).map((qi: any) => ({
         productId: qi.product_id,
-        quantity: qi.quantity
+        quantity: Number(qi.quantity)
       }))
     }));
 
@@ -60,7 +63,7 @@ export const fetchAllData = async (): Promise<AppData> => {
       materials: (materials || []).map(m => ({
         ...m,
         costPerUnit: Number(m.cost_per_unit),
-        widthCm: m.width_cm
+        widthCm: m.width_cm ? Number(m.width_cm) : undefined
       })),
       products: adaptedProducts,
       clients: clients || [],
@@ -73,45 +76,43 @@ export const fetchAllData = async (): Promise<AppData> => {
       settings: INITIAL_DATA.settings
     };
   } catch (error) {
-    console.error('Error fetching from Supabase:', error);
+    console.error('Error crítico en fetchAllData:', error);
     return INITIAL_DATA;
   }
 };
 
-export const syncTransaction = async (transaction: Transaction) => {
-  const { error } = await supabase.from('transactions').upsert({
-    id: transaction.id,
-    date: transaction.date,
-    type: transaction.type,
-    category: transaction.category,
-    amount: transaction.amount,
-    description: transaction.description
-  });
-  if (error) console.error('Sync error transaction:', error);
+// Sincronización masiva para evitar fallos de red
+export const syncMaterialsBatch = async (materials: Material[]) => {
+    const toUpsert = materials.map(m => ({
+        id: m.id,
+        name: m.name,
+        unit: m.unit,
+        cost_per_unit: m.costPerUnit,
+        width_cm: m.widthCm
+    }));
+    const { error } = await supabase.from('materials').upsert(toUpsert);
+    if (error) alert("Error al guardar materiales: " + error.message);
 };
 
-export const syncMaterial = async (material: Material) => {
-  const { error } = await supabase.from('materials').upsert({
-    id: material.id,
-    name: material.name,
-    unit: material.unit,
-    cost_per_unit: material.costPerUnit,
-    width_cm: material.widthCm
-  });
-  if (error) console.error('Sync error material:', error);
+export const syncClientsBatch = async (clients: Client[]) => {
+    const { error } = await supabase.from('clients').upsert(clients);
+    if (error) alert("Error al guardar clientes: " + error.message);
+};
+
+export const syncTransactionsBatch = async (transactions: Transaction[]) => {
+    const { error } = await supabase.from('transactions').upsert(transactions);
+    if (error) alert("Error al guardar contabilidad: " + error.message);
 };
 
 export const syncProduct = async (product: Product) => {
-  // 1. Upsert product
   const { error: pError } = await supabase.from('products').upsert({
     id: product.id,
     name: product.name,
     description: product.description,
     base_labor_cost: product.baseLaborCost
   });
-  if (pError) return console.error('Sync error product:', pError);
+  if (pError) return console.error('Error syncing product:', pError.message);
 
-  // 2. Refresh requirements
   await supabase.from('product_materials').delete().eq('product_id', product.id);
   if (product.materials.length > 0) {
     const { error: pmError } = await supabase.from('product_materials').insert(
@@ -123,13 +124,8 @@ export const syncProduct = async (product: Product) => {
         height_cm: m.heightCm
       }))
     );
-    if (pmError) console.error('Sync error product_materials:', pmError);
+    if (pmError) console.error('Error syncing materials for product:', pmError.message);
   }
-};
-
-export const syncClient = async (client: Client) => {
-  const { error } = await supabase.from('clients').upsert(client);
-  if (error) console.error('Sync error client:', error);
 };
 
 export const syncQuote = async (quote: Quote) => {
@@ -145,7 +141,7 @@ export const syncQuote = async (quote: Quote) => {
     created_at: new Date(quote.createdAt).toISOString()
   });
 
-  if (qError) return console.error('Sync error quote:', qError);
+  if (qError) return console.error('Error syncing quote:', qError.message);
 
   await supabase.from('quote_items').delete().eq('quote_id', quote.id);
   if (quote.items.length > 0) {
@@ -156,11 +152,11 @@ export const syncQuote = async (quote: Quote) => {
         quantity: item.quantity
       }))
     );
-    if (itemsError) console.error('Sync items error:', itemsError);
+    if (itemsError) console.error('Error syncing items for quote:', itemsError.message);
   }
 };
 
 export const deleteFromSupabase = async (table: string, id: string) => {
     const { error } = await supabase.from(table).delete().eq('id', id);
-    if (error) console.error(`Delete error from ${table}:`, error);
+    if (error) console.error(`Error eliminando de ${table}:`, error.message);
 };
