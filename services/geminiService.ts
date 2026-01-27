@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { Product, Material, Quote, ProductMaterialRequirement } from "../types";
 
@@ -21,11 +20,13 @@ export const generateMarketingText = async (quote: Quote, products: Product[], m
     Resalta el valor del trabajo artesanal y la calidad de los materiales. 
     Usa un tono dulce y profesional. No uses precios.`;
 
+    // Always use ai.models.generateContent to query GenAI with both the model name and prompt.
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: prompt,
     });
 
+    // The GenerateContentResponse object features a text property (not a method).
     return response.text || "Gracias por elegirnos para acompañar los primeros pasos de tu bebé.";
   } catch (error) {
     console.error("Gemini Marketing Error:", error);
@@ -42,6 +43,7 @@ export const generateDescriptionFromMaterials = async (
   availableMaterials: Material[]
 ): Promise<string> => {
   try {
+    // Create a new GoogleGenAI instance right before making an API call.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const materialList = requirements.map(req => {
@@ -58,11 +60,13 @@ export const generateDescriptionFromMaterials = async (
     - Tono: dulce, protector y premium.
     - Máximo 250 caracteres. No menciones precios.`;
 
+    // Query GenAI with both the model name and prompt string.
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: prompt,
     });
 
+    // The simplest way to get the generated text content is by accessing the .text property.
     const text = response.text;
     if (!text) throw new Error("La IA no devolvió texto.");
 
