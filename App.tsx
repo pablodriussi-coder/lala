@@ -34,36 +34,53 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean, settings
   return (
     <div className="flex h-screen bg-brand-white overflow-hidden">
       <aside className="w-64 bg-white shadow-xl z-10 border-r border-brand-beige hidden md:flex flex-col">
-        <div className="p-8">
+        {/* Logo area with reduced padding */}
+        <div className="p-4 border-b border-brand-white">
           {settings.shopLogo ? (
             <div className="flex flex-col items-center">
-              <img src={settings.shopLogo} className="h-16 w-auto mb-2" alt="Logo" />
-              <p className="text-[9px] text-brand-greige font-black uppercase tracking-[0.2em]">{settings.brandName}</p>
+              <img src={settings.shopLogo} className="h-12 w-auto mb-1 object-contain" alt="Logo" />
+              <p className="text-[8px] text-brand-greige font-black uppercase tracking-[0.2em]">{settings.brandName}</p>
             </div>
           ) : (
             <div className="flex flex-col">
-              <h1 className="text-3xl font-bold text-brand-dark leading-none tracking-tight flex items-baseline">
-                Lala<span className="text-brand-red ml-1 text-2xl">★</span>
+              <h1 className="text-2xl font-bold text-brand-dark leading-none tracking-tight flex items-baseline">
+                Lala<span className="text-brand-red ml-0.5 text-xl">★</span>
               </h1>
-              <p className="text-[11px] text-brand-greige font-semibold tracking-[0.2em] uppercase mt-1">accesorios</p>
+              <p className="text-[9px] text-brand-greige font-semibold tracking-[0.2em] uppercase mt-0.5">accesorios</p>
             </div>
           )}
         </div>
-        <nav className="mt-4 flex-1">
+
+        {/* Navigation with reduced vertical spacing */}
+        <nav className="mt-2 flex-1 overflow-y-auto">
           {navItems.map((item) => (
-            <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-8 py-5 transition-all duration-300 ${location.pathname === item.path ? 'sidebar-item-active' : 'text-gray-400 hover:bg-brand-white hover:text-brand-sage'}`}>
+            <Link 
+              key={item.path} 
+              to={item.path} 
+              className={`flex items-center gap-3 px-6 py-3 transition-all duration-300 ${
+                location.pathname === item.path 
+                ? 'sidebar-item-active' 
+                : 'text-gray-400 hover:bg-brand-white hover:text-brand-sage'
+              }`}
+            >
               <item.icon />
-              <span className="font-semibold">{item.label}</span>
+              <span className="font-bold text-sm">{item.label}</span>
             </Link>
           ))}
         </nav>
-        <div className="p-6">
-          <Link to="/shop" className="flex items-center justify-center gap-2 w-full bg-brand-white border border-brand-beige p-4 rounded-2xl text-brand-dark font-bold text-sm hover:bg-brand-sage hover:text-white transition-all group">
+
+        {/* Shop Access Button - Compact version */}
+        <div className="p-4 bg-brand-white/30 border-t border-brand-beige">
+          <Link 
+            to="/shop" 
+            className="flex items-center justify-center gap-2 w-full bg-brand-sage text-white p-3 rounded-xl font-bold text-xs shadow-md hover:bg-brand-dark transition-all group"
+          >
             <span>✨ Ver Tienda</span>
             <span className="group-hover:translate-x-1 transition-transform">→</span>
           </Link>
         </div>
       </aside>
+
       <main className="flex-1 overflow-y-auto relative">
         {isLoading ? (
           <div className="h-full flex flex-col items-center justify-center space-y-4">
