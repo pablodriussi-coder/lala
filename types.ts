@@ -10,14 +10,14 @@ export interface Material {
   name: string;
   unit: MaterialUnit;
   costPerUnit: number;
-  widthCm?: number; // Para telas (ancho comercial)
+  widthCm?: number; 
 }
 
 export interface ProductMaterialRequirement {
   materialId: string;
-  quantity: number; // Para unidades o kg
-  widthCm?: number; // Para cortes de tela
-  heightCm?: number; // Para cortes de tela
+  quantity: number; 
+  widthCm?: number; 
+  heightCm?: number; 
 }
 
 export interface Product {
@@ -26,7 +26,7 @@ export interface Product {
   description: string;
   materials: ProductMaterialRequirement[];
   baseLaborCost: number;
-  images?: string[]; // Array de strings Base64
+  images?: string[]; 
 }
 
 export interface Client {
@@ -77,6 +77,7 @@ export interface AppData {
   settings: {
     brandName: string;
     defaultMargin: number;
+    whatsappNumber: string; // Nuevo campo
     initialFunds?: number;
   };
 }

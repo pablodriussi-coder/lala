@@ -90,6 +90,8 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
     setCart(prev => prev.filter(item => item.productId !== productId));
   };
 
+  const totalItems = cart.reduce((a,b) => a+b.quantity, 0);
+
   const cartTotal = useMemo(() => {
     return cart.reduce((acc, item) => {
       const p = productsWithPrices.find(prod => prod.id === item.productId);
@@ -103,16 +105,34 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
       return `- ${item.quantity}x ${p?.name} ($${((p?.price || 0) * item.quantity).toFixed(2)})`;
     }).join('%0A');
 
-    const message = `¡Hola Lala accesorios! ✨ Me encantaría pedir lo siguiente:%0A%0A${itemsText}%0A%0A*Total Estimado: $${cartTotal.toFixed(2)}*%0A%0A¿Me confirmás para avanzar? 😊`;
-    window.open(`https://wa.me/?text=${message}`, '_blank');
+    const message = `¡Hola ${data.settings.brandName}! ✨ Me encantaría pedir lo siguiente:%0A%0A${itemsText}%0A%0A*Total Estimado: $${cartTotal.toFixed(2)}*%0A%0A¿Me confirmás para avanzar? 😊`;
+    const phone = data.settings.whatsappNumber || '5491100000000';
+    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
   };
 
   return (
-    <div className="min-h-screen bg-brand-white pb-32 animate-fadeIn font-['Quicksand']">
+    <div className="min-h-screen bg-brand-white pb-32 animate-fadeIn font-['Quicksand'] relative">
+      {/* Botón Carrito Superior Derecha */}
+      <button 
+        onClick={() => setIsCartOpen(true)}
+        className="fixed top-8 right-8 z-40 bg-white p-4 rounded-full shadow-2xl border border-brand-beige group active:scale-95 transition-all"
+      >
+        <div className="relative">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-brand-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+          </svg>
+          {totalItems > 0 && (
+            <span className="absolute -top-2 -right-2 bg-brand-red text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full animate-bounce">
+              {totalItems}
+            </span>
+          )}
+        </div>
+      </button>
+
       <header className="bg-white pt-24 pb-20 px-6 text-center border-b border-brand-beige mb-16 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-2 bg-brand-sage"></div>
         <div className="max-w-4xl mx-auto relative">
-          <h1 className="text-6xl font-black text-brand-dark mb-6 tracking-tighter">Lala <span className="text-brand-red">★</span></h1>
+          <h1 className="text-6xl font-black text-brand-dark mb-6 tracking-tighter">{data.settings.brandName} <span className="text-brand-red">★</span></h1>
           <p className="text-brand-sage font-black uppercase tracking-[0.4em] text-xs mb-8">Artesanías que abrazan a tu bebé</p>
           <div className="w-20 h-1 bg-brand-beige mx-auto rounded-full"></div>
         </div>
@@ -128,22 +148,25 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
         )}
       </div>
 
-      {/* Carrito Flotante */}
-      {cart.length > 0 && (
-        <div className={`fixed bottom-0 right-0 left-0 md:left-auto md:right-10 md:bottom-10 z-50 transition-all duration-700 ${isCartOpen ? 'translate-y-0' : 'translate-y-[calc(100%-80px)] md:translate-y-0'}`}>
-          <div className="bg-white w-full md:w-[450px] rounded-t-[3rem] md:rounded-[3rem] shadow-[0_-20px_50px_rgba(0,0,0,0.08)] border border-brand-beige overflow-hidden">
-            <button 
-              onClick={() => setIsCartOpen(!isCartOpen)}
-              className="w-full p-8 bg-brand-sage text-white flex justify-between items-center font-black text-lg"
-            >
-              <span className="flex items-center gap-3">🛒 Mi Carrito ({cart.reduce((a,b) => a+b.quantity, 0)})</span>
-              <span className="bg-white/20 px-4 py-1 rounded-full text-sm">
-                {isCartOpen ? 'Minimizar' : `$${cartTotal.toFixed(0)}`}
-              </span>
-            </button>
+      {/* Carrito Flotante Lateral */}
+      <div className={`fixed inset-0 bg-brand-dark/20 backdrop-blur-sm z-50 transition-opacity duration-500 ${isCartOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsCartOpen(false)}>
+        <div 
+          className={`absolute top-0 right-0 h-full w-full md:w-[450px] bg-white shadow-2xl transition-transform duration-500 transform ${isCartOpen ? 'translate-x-0' : 'translate-x-full'}`}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="flex flex-col h-full">
+            <div className="p-8 bg-brand-sage text-white flex justify-between items-center">
+              <h2 className="text-2xl font-black flex items-center gap-3">🛒 Mi Pedido</h2>
+              <button onClick={() => setIsCartOpen(false)} className="text-3xl font-light hover:rotate-90 transition-transform">✕</button>
+            </div>
             
-            <div className={`p-10 space-y-6 max-h-[60vh] overflow-y-auto ${isCartOpen ? 'block' : 'hidden'}`}>
-              {cart.map(item => {
+            <div className="flex-1 overflow-y-auto p-10 space-y-6">
+              {cart.length === 0 ? (
+                <div className="text-center py-20">
+                  <span className="text-6xl block mb-4 opacity-20">🧺</span>
+                  <p className="text-brand-greige font-bold">Tu carrito está vacío</p>
+                </div>
+              ) : cart.map(item => {
                 const p = productsWithPrices.find(prod => prod.id === item.productId);
                 return (
                   <div key={item.productId} className="flex justify-between items-center border-b border-brand-white pb-6 last:border-0">
@@ -167,10 +190,13 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                   </div>
                 );
               })}
-              <div className="pt-8 space-y-6">
-                <div className="flex justify-between text-2xl font-black text-brand-dark border-t border-brand-beige pt-6">
+            </div>
+
+            {cart.length > 0 && (
+              <div className="p-10 bg-brand-white border-t border-brand-beige">
+                <div className="flex justify-between text-3xl font-black text-brand-dark mb-8">
                   <span>TOTAL</span>
-                  <span>$${cartTotal.toFixed(0)}</span>
+                  <span>${cartTotal.toFixed(0)}</span>
                 </div>
                 <button 
                   onClick={sendWhatsAppOrder}
@@ -180,13 +206,13 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                   Hacer mi pedido por WhatsApp
                 </button>
               </div>
-            </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       <footer className="mt-40 py-16 text-center border-t border-brand-beige bg-white text-brand-greige text-[10px] font-black uppercase tracking-[0.3em]">
-        &copy; {new Date().getFullYear()} Lala accesorios ★ Amor en cada puntada
+        &copy; {new Date().getFullYear()} {data.settings.brandName} ★ Amor en cada puntada
       </footer>
     </div>
   );

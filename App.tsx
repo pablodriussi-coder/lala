@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { fetchAllData, syncMaterialsBatch, syncClientsBatch, syncTransactionsBatch, syncQuote, syncProduct, deleteFromSupabase } from './store';
+import { fetchAllData, syncMaterialsBatch, syncClientsBatch, syncTransactionsBatch, syncQuote, syncProduct, deleteFromSupabase, syncSettings } from './store';
 import { AppData, Material, Product, Client, Quote, Transaction } from './types';
 import { ICONS } from './constants';
 import Dashboard from './views/Dashboard';
@@ -27,7 +27,6 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
     { path: '/clients', label: 'Clientes', icon: ICONS.Clients },
   ];
 
-  // Si estamos en la vista de tienda, no mostramos el sidebar ni el botón de retorno
   if (isShopView) {
     return (
       <div className="bg-brand-white min-h-screen relative">
@@ -132,7 +131,6 @@ export default function App() {
 
   const handleUpdateClients = async (newClients: Client[]) => {
     if (!data) return;
-    // Fix: typo 'nm' to 'nc' in the find callback to ensure deleted clients are correctly identified
     const deletedIds = data.clients.filter(c => !newClients.find(nc => nc.id === c.id)).map(c => c.id);
     setData({...data, clients: newClients});
     await syncClientsBatch(newClients);
@@ -155,6 +153,12 @@ export default function App() {
     for (const id of deletedIds) await deleteFromSupabase('transactions', id);
   };
 
+  const handleUpdateSettings = async (newSettings: AppData['settings']) => {
+    if (!data) return;
+    setData({...data, settings: newSettings});
+    await syncSettings(newSettings);
+  };
+
   if (!data && loading) return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-brand-white">
         <div className="w-16 h-16 border-8 border-brand-beige border-t-brand-sage rounded-full animate-spin"></div>
@@ -168,7 +172,7 @@ export default function App() {
     <HashRouter>
       <Layout isLoading={loading}>
         <Routes>
-          <Route path="/" element={<Dashboard data={safeData} />} />
+          <Route path="/" element={<Dashboard data={safeData} onUpdateSettings={handleUpdateSettings} />} />
           <Route path="/materials" element={<MaterialsManager data={safeData} updateData={(up) => {
               const next = up(safeData);
               handleUpdateMaterials(next.materials);
@@ -203,5 +207,5 @@ const INITIAL_APP_DATA: AppData = {
   clients: [],
   quotes: [],
   transactions: [],
-  settings: { brandName: 'Lala', defaultMargin: 400 }
+  settings: { brandName: 'Lala', defaultMargin: 400, whatsappNumber: '5491100000000' }
 };

@@ -10,29 +10,28 @@ const INITIAL_DATA: AppData = {
   transactions: [],
   settings: {
     brandName: 'Lala accesorios',
-    defaultMargin: 400
+    defaultMargin: 400,
+    whatsappNumber: '5491100000000'
   }
 };
 
 export const fetchAllData = async (): Promise<AppData> => {
   try {
     const [
-      { data: materials, error: mErr },
-      { data: products, error: pErr },
-      { data: clients, error: cErr },
-      { data: quotes, error: qErr },
-      { data: transactions, error: tErr }
+      { data: materials },
+      { data: products },
+      { data: clients },
+      { data: quotes },
+      { data: transactions },
+      { data: settingsData }
     ] = await Promise.all([
       supabase.from('materials').select('*'),
       supabase.from('products').select('*, product_materials(*)'),
       supabase.from('clients').select('*'),
       supabase.from('quotes').select('*, quote_items(*)'),
-      supabase.from('transactions').select('*')
+      supabase.from('transactions').select('*'),
+      supabase.from('settings').select('*').eq('id', 'default').single()
     ]);
-
-    if (mErr || pErr || cErr || qErr || tErr) {
-        console.error("Error cargando tablas:", { mErr, pErr, cErr, qErr, tErr });
-    }
 
     const adaptedProducts = (products || []).map(p => ({
       ...p,
@@ -74,12 +73,26 @@ export const fetchAllData = async (): Promise<AppData> => {
         amount: Number(t.amount),
         date: Number(t.date)
       })),
-      settings: INITIAL_DATA.settings
+      settings: settingsData ? {
+        brandName: settingsData.brand_name,
+        defaultMargin: Number(settingsData.default_margin),
+        whatsappNumber: settingsData.whatsapp_number
+      } : INITIAL_DATA.settings
     };
   } catch (error) {
     console.error('Error crítico en fetchAllData:', error);
     return INITIAL_DATA;
   }
+};
+
+export const syncSettings = async (settings: AppData['settings']) => {
+  const { error } = await supabase.from('settings').upsert({
+    id: 'default',
+    brand_name: settings.brandName,
+    default_margin: settings.defaultMargin,
+    whatsapp_number: settings.whatsappNumber
+  });
+  if (error) console.error("Error guardando ajustes:", error.message);
 };
 
 export const syncMaterialsBatch = async (materials: Material[]) => {
@@ -90,44 +103,30 @@ export const syncMaterialsBatch = async (materials: Material[]) => {
         cost_per_unit: m.costPerUnit,
         width_cm: m.widthCm
     }));
-    const { error } = await supabase.from('materials').upsert(toUpsert);
-    if (error) alert("Error al guardar materiales: " + error.message);
+    await supabase.from('materials').upsert(toUpsert);
 };
 
 export const syncClientsBatch = async (clients: Client[]) => {
-    const { error } = await supabase.from('clients').upsert(clients);
-    if (error) alert("Error al guardar clientes: " + error.message);
+    await supabase.from('clients').upsert(clients);
 };
 
 export const syncTransactionsBatch = async (transactions: Transaction[]) => {
-    const { error } = await supabase.from('transactions').upsert(transactions);
-    if (error) alert("Error al guardar contabilidad: " + error.message);
+    await supabase.from('transactions').upsert(transactions);
 };
 
 export const syncProduct = async (product: Product) => {
-  const productData = {
+  const { error } = await supabase.from('products').upsert({
     id: product.id,
     name: product.name,
     description: product.description,
     base_labor_cost: product.baseLaborCost,
     images: product.images || []
-  };
-
-  const { error: pError } = await supabase.from('products').upsert(productData);
-  
-  if (pError) {
-    console.error('Error al sincronizar producto:', pError);
-    if (pError.message.includes('images')) {
-        alert("⚠️ Error: La columna 'images' no existe en Supabase. Debes ejecutar el comando SQL: ALTER TABLE products ADD COLUMN images text[] DEFAULT '{}';");
-    } else {
-        alert("Error al guardar producto: " + pError.message);
-    }
-    return;
-  }
+  });
+  if (error) return;
 
   await supabase.from('product_materials').delete().eq('product_id', product.id);
   if (product.materials.length > 0) {
-    const { error: pmError } = await supabase.from('product_materials').insert(
+    await supabase.from('product_materials').insert(
       product.materials.map(m => ({
         product_id: product.id,
         material_id: m.materialId,
@@ -136,12 +135,11 @@ export const syncProduct = async (product: Product) => {
         height_cm: m.heightCm
       }))
     );
-    if (pmError) console.error('Error syncing materials for product:', pmError.message);
   }
 };
 
 export const syncQuote = async (quote: Quote) => {
-  const { error: qError } = await supabase.from('quotes').upsert({
+  await supabase.from('quotes').upsert({
     id: quote.id,
     client_id: quote.clientId,
     profit_margin_percent: quote.profitMarginPercent,
@@ -153,22 +151,18 @@ export const syncQuote = async (quote: Quote) => {
     created_at: new Date(quote.createdAt).toISOString()
   });
 
-  if (qError) return console.error('Error syncing quote:', qError.message);
-
   await supabase.from('quote_items').delete().eq('quote_id', quote.id);
   if (quote.items.length > 0) {
-    const { error: itemsError } = await supabase.from('quote_items').insert(
+    await supabase.from('quote_items').insert(
       quote.items.map(item => ({
         quote_id: quote.id,
         product_id: item.productId,
         quantity: item.quantity
       }))
     );
-    if (itemsError) console.error('Error syncing items for quote:', itemsError.message);
   }
 };
 
 export const deleteFromSupabase = async (table: string, id: string) => {
-    const { error } = await supabase.from(table).delete().eq('id', id);
-    if (error) console.error(`Error eliminando de ${table}:`, error.message);
+    await supabase.from(table).delete().eq('id', id);
 };

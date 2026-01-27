@@ -1,13 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AppData } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface DashboardProps {
   data: AppData;
+  onUpdateSettings?: (settings: AppData['settings']) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ data }) => {
+const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempSettings, setTempSettings] = useState(data.settings);
+
   const totalQuotes = data.quotes.length;
   
   const financialTotals = React.useMemo(() => {
@@ -15,9 +19,6 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
     const expense = data.transactions.reduce((acc, t) => t.type === 'expense' ? acc + t.amount : acc, 0);
     return { balance: income - expense, income, expense };
   }, [data.transactions]);
-
-  const totalMaterials = data.materials.length;
-  const totalClients = data.clients.length;
 
   const chartData = [
     { name: 'Saldo', value: financialTotals.balance, color: '#b2c0a3' },
@@ -29,16 +30,24 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 5);
 
+  const handleSaveSettings = () => {
+    onUpdateSettings?.(tempSettings);
+    setIsEditing(false);
+  };
+
   return (
-    <div className="space-y-10 animate-fadeIn">
+    <div className="space-y-10 animate-fadeIn pb-20">
       <header className="flex justify-between items-end">
         <div>
           <h2 className="text-sm font-bold text-brand-sage uppercase tracking-[0.3em] mb-1">Bienvenida</h2>
           <h1 className="text-4xl font-bold text-brand-dark">{data.settings.brandName}</h1>
         </div>
-        <div className="hidden md:block">
-          <p className="text-sm text-brand-greige font-medium">{new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-        </div>
+        <button 
+          onClick={() => setIsEditing(true)}
+          className="bg-brand-white border border-brand-beige px-6 py-2 rounded-xl text-xs font-black text-brand-dark hover:bg-brand-beige transition-colors"
+        >
+          ⚙️ AJUSTES
+        </button>
       </header>
 
       {/* Stats Grid */}
@@ -46,8 +55,8 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         {[
           { label: 'Capital Disponible', value: `$${financialTotals.balance.toLocaleString()}`, icon: '💰', color: 'text-brand-dark' },
           { label: 'Presupuestos', value: totalQuotes, icon: '📋', color: 'text-brand-sage' },
-          { label: 'Materiales', value: totalMaterials, icon: '🧵', color: 'text-brand-greige' },
-          { label: 'Clientes', value: totalClients, icon: '🤝', color: 'text-brand-red' },
+          { label: 'Materiales', value: data.materials.length, icon: '🧵', color: 'text-brand-greige' },
+          { label: 'Clientes', value: data.clients.length, icon: '🤝', color: 'text-brand-red' },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-8 rounded-[2rem] shadow-sm border border-brand-beige flex items-center gap-5 hover:shadow-lg transition-all">
             <div className="text-3xl">{stat.icon}</div>
@@ -60,7 +69,6 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Activity Chart */}
         <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-brand-beige">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-xl font-bold text-brand-dark">Estado del Negocio</h3>
@@ -72,21 +80,15 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#d1cdc1', fontSize: 12}} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#d1cdc1', fontSize: 12}} />
-                <Tooltip 
-                    cursor={{fill: '#f8f7f2'}}
-                    contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', backgroundColor: 'white' }}
-                />
+                <Tooltip cursor={{fill: '#f8f7f2'}} contentStyle={{ borderRadius: '20px', border: 'none', backgroundColor: 'white' }} />
                 <Bar dataKey="value" radius={[15, 15, 15, 15]} barSize={40}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
+                  {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Recent Quotes */}
         <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-brand-beige">
           <h3 className="text-xl font-bold text-brand-dark mb-8">Actividad Reciente</h3>
           <div className="space-y-5">
@@ -105,24 +107,48 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-brand-dark">${quote.totalPrice.toLocaleString()}</p>
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${
-                        quote.status === 'accepted' ? 'bg-brand-sage/20 text-brand-sage' : 
-                        quote.status === 'pending' ? 'bg-brand-beige text-brand-dark/60' : 'bg-brand-red/10 text-brand-red'
-                    }`}>
-                        {quote.status}
-                    </span>
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-brand-beige text-brand-dark/60">{quote.status}</span>
                   </div>
                 </div>
               );
-            }) : (
-              <div className="flex flex-col items-center justify-center py-10 opacity-40">
-                <span className="text-4xl mb-2">📄</span>
-                <p className="text-sm italic">Sin presupuestos registrados.</p>
-              </div>
-            )}
+            }) : <p className="text-center text-brand-greige italic py-10">Sin actividad.</p>}
           </div>
         </div>
       </div>
+
+      {isEditing && (
+        <div className="fixed inset-0 bg-brand-dark/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[2.5rem] p-10 w-full max-w-md shadow-2xl border border-brand-beige animate-slideUp">
+            <h3 className="text-2xl font-bold text-brand-dark mb-8">Configuración</h3>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Nombre del Emprendimiento</label>
+                <input 
+                  type="text" 
+                  value={tempSettings.brandName}
+                  onChange={e => setTempSettings({...tempSettings, brandName: e.target.value})}
+                  className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:bg-white font-bold"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">WhatsApp para Pedidos</label>
+                <input 
+                  type="text" 
+                  value={tempSettings.whatsappNumber}
+                  onChange={e => setTempSettings({...tempSettings, whatsappNumber: e.target.value})}
+                  className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:bg-white font-bold"
+                  placeholder="Ej: 5491122334455"
+                />
+                <p className="text-[9px] text-brand-greige mt-2 italic">* Formato: Código de país + código de área + número (sin el + ni espacios).</p>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button onClick={() => setIsEditing(false)} className="flex-1 py-4 text-brand-greige font-bold">Cancelar</button>
+                <button onClick={handleSaveSettings} className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold hover:bg-brand-dark transition-all">Guardar Cambios</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
