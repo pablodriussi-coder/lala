@@ -28,7 +28,7 @@ const ProductCard: React.FC<{
             </div>
             <div className="p-4 flex-1 flex flex-col text-center">
                 <h3 className="text-xs font-bold text-brand-dark mb-1 truncate uppercase tracking-tight">{product.name}</h3>
-                <button onClick={() => onOpenSelector(product)} className="w-full mt-auto bg-brand-sage text-white py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-brand-dark transition-all active:scale-95">Ver Detalles</button>
+                <button onClick={() => onOpenSelector(product)} className="w-full mt-auto bg-brand-sage text-white py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-brand-dark transition-all active:scale-95 shadow-sm">Ver Detalles</button>
             </div>
         </div>
     );
@@ -119,7 +119,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
             </h1>
           )}
           
-          <p className="text-brand-dark text-md md:text-2xl font-bold opacity-80 leading-relaxed italic max-w-2xl mx-auto">
+          <p className="text-brand-dark text-md md:text-2xl font-bold opacity-90 leading-relaxed italic max-w-2xl mx-auto">
             "{data.settings.shopBannerText || 'Confecciones artesanales hechas con amor.'}"
           </p>
           
@@ -155,7 +155,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
         ) : (
           <div className="space-y-8 animate-fadeIn">
             <div className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-xl border border-brand-beige">
-                <button onClick={() => setSelectedCategoryId(null)} className="flex items-center gap-3 text-brand-greige hover:text-brand-dark font-black text-[9px] uppercase tracking-widest mb-10 transition-all group">
+                <button onClick={() => setSelectedCategoryId(null)} className="flex items-center gap-3 text-brand-dark hover:text-brand-sage font-black text-[11px] uppercase tracking-widest mb-10 transition-all group">
                   <span className="group-hover:-translate-x-1 transition-transform">←</span> Volver al inicio
                 </button>
                 <div className="flex items-center gap-6 mb-12">
@@ -168,7 +168,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
                     {filteredProducts.map(product => <ProductCard key={product.id} product={product} onOpenSelector={setSelectingProduct} />)}
                 </div>
-                ) : <p className="text-center py-32 text-brand-greige italic text-lg opacity-60">Estamos preparando nuevos productos para esta sección...</p>}
+                ) : <p className="text-center py-32 text-brand-dark italic text-lg opacity-60">Estamos preparando nuevos productos para esta sección...</p>}
             </div>
           </div>
         )}
@@ -181,11 +181,13 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                   <div className="flex justify-between items-start mb-6">
                     <div>
                       <h3 className="text-3xl font-black text-brand-dark uppercase tracking-tight">{selectingProduct.name}</h3>
-                      <p className="text-sm font-bold text-brand-sage mt-1">${selectingProduct.price.toFixed(0)}</p>
+                      <p className="text-lg font-bold text-brand-sage mt-1">${selectingProduct.price.toFixed(0)}</p>
                     </div>
-                    <button onClick={() => setSelectingProduct(null)} className="text-brand-greige hover:text-brand-red text-3xl transition-colors">✕</button>
+                    <button onClick={() => setSelectingProduct(null)} className="text-brand-dark hover:text-brand-red text-3xl transition-colors">✕</button>
                   </div>
-                  <p className="text-xs text-brand-greige mb-8 italic leading-relaxed border-l-4 border-brand-beige pl-4">{selectingProduct.description || 'Artesanía pura diseñada con amor.'}</p>
+                  <p className="text-sm text-brand-dark/80 mb-8 italic leading-relaxed border-l-4 border-brand-sage/30 pl-4 bg-brand-white/50 py-3 rounded-r-xl">
+                    {selectingProduct.description || 'Artesanía pura diseñada con amor para acompañar el crecimiento de tu bebé.'}
+                  </p>
                   
                   <div className="flex-1 overflow-y-auto mb-8 pr-2">
                       <label className="block text-[10px] font-black text-brand-dark uppercase tracking-[0.2em] mb-5 text-center">Selecciona un estampado:</label>
@@ -196,14 +198,14 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                                       <div className="aspect-square rounded-xl overflow-hidden mb-2">
                                         <img src={design.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={design.name} />
                                       </div>
-                                      <span className="text-[9px] font-black block truncate text-center uppercase">{design.name}</span>
+                                      <span className="text-[9px] font-black block truncate text-center uppercase text-brand-dark">{design.name}</span>
                                   </button>
                               ))}
                           </div>
-                      ) : <p className="text-brand-greige italic text-[10px] text-center py-10 bg-brand-white/50 rounded-3xl border border-dashed border-brand-beige">Estampados exclusivos según stock disponible.</p>}
+                      ) : <p className="text-brand-dark/60 italic text-[10px] text-center py-10 bg-brand-white/50 rounded-3xl border border-dashed border-brand-beige">Estampados exclusivos según stock disponible.</p>}
                   </div>
                   <div className="flex gap-4">
-                      <button onClick={() => setSelectingProduct(null)} className="flex-1 font-black text-brand-greige uppercase text-[9px] tracking-widest">Cancelar</button>
+                      <button onClick={() => setSelectingProduct(null)} className="flex-1 font-black text-brand-dark/60 uppercase text-[9px] tracking-widest hover:text-brand-dark transition-colors">Cancelar</button>
                       <button onClick={addToCart} className="flex-[3] bg-brand-sage text-white py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-brand-dark transition-all active:scale-95">Añadir al Carrito</button>
                   </div>
               </div>
@@ -215,7 +217,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
         <div className={`absolute right-0 h-full w-full max-w-[400px] bg-white p-8 md:p-12 shadow-2xl transition-transform duration-700 flex flex-col ${isCartOpen ? 'translate-x-0' : 'translate-x-full'}`} onClick={e => e.stopPropagation()}>
            <div className="flex justify-between items-center mb-10 border-b border-brand-white pb-6">
               <h2 className="text-2xl font-black text-brand-dark uppercase tracking-tight">Tu pedido <span className="text-brand-red">★</span></h2>
-              <button onClick={() => setIsCartOpen(false)} className="text-brand-greige hover:text-brand-dark text-xl">✕</button>
+              <button onClick={() => setIsCartOpen(false)} className="text-brand-dark hover:text-brand-red text-xl transition-colors">✕</button>
            </div>
            
            <div className="flex-1 overflow-y-auto space-y-6 pr-2">
@@ -228,26 +230,26 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                    </div>
                    <div className="flex-1 min-w-0">
                       <p className="text-xs font-black text-brand-dark truncate uppercase tracking-tight">{p?.name}</p>
-                      {item.selectedDesign && <p className="text-[9px] font-bold text-brand-sage uppercase tracking-widest mt-0.5 opacity-70">Tela: {item.selectedDesign.name}</p>}
+                      {item.selectedDesign && <p className="text-[9px] font-bold text-brand-sage uppercase tracking-widest mt-0.5 opacity-90">Tela: {item.selectedDesign.name}</p>}
                       <div className="flex justify-between items-end mt-2">
-                        <span className="text-[9px] font-black text-brand-greige bg-brand-white px-2 py-0.5 rounded-lg border border-brand-beige">{item.quantity} un.</span>
+                        <span className="text-[9px] font-black text-brand-dark/70 bg-brand-white px-2 py-0.5 rounded-lg border border-brand-beige">{item.quantity} un.</span>
                         <span className="text-xs font-black text-brand-dark">${((p?.price || 0) * item.quantity).toFixed(0)}</span>
                       </div>
                    </div>
-                   <button onClick={() => setCart(cart.filter((_, i) => i !== idx))} className="text-brand-red opacity-30 hover:opacity-100 p-2 transition-opacity">✕</button>
+                   <button onClick={() => setCart(cart.filter((_, i) => i !== idx))} className="text-brand-red opacity-50 hover:opacity-100 p-2 transition-opacity">✕</button>
                  </div>
                );
              }) : (
                <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
                  <div className="text-7xl mb-6">🧺</div>
-                 <p className="font-black uppercase tracking-widest text-[10px]">Tu carrito está vacío</p>
+                 <p className="font-black uppercase tracking-widest text-[10px] text-brand-dark">Tu carrito está vacío</p>
                </div>
              )}
            </div>
 
            <div className="border-t border-brand-white pt-8 mt-6">
               <div className="flex justify-between items-end mb-8">
-                <span className="text-[10px] font-black text-brand-greige uppercase tracking-[0.3em]">Total</span>
+                <span className="text-[10px] font-black text-brand-dark/50 uppercase tracking-[0.3em]">Total</span>
                 <span className="text-3xl font-black text-brand-sage">${cartTotal.toFixed(0)}</span>
               </div>
               <button onClick={sendWhatsAppOrder} disabled={cart.length === 0} className="w-full bg-[#25D366] text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-brand-dark transition-all disabled:opacity-20 flex items-center justify-center gap-3 active:scale-95">

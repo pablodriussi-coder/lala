@@ -167,7 +167,7 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Catálogo</h2>
-          <p className="text-brand-greige font-medium">Gestión de productos por categoría</p>
+          <p className="text-brand-dark/60 font-medium">Gestión de productos por categoría</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={importFromExcel} className="hidden" />
@@ -201,7 +201,9 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
               </div>
               <div className="p-6 flex-1 flex flex-col">
                 <h3 className="text-lg font-bold text-brand-dark mb-1">{product.name}</h3>
-                <p className="text-brand-greige text-[11px] line-clamp-2 mb-4 italic flex-1">{product.description || 'Sin descripción.'}</p>
+                <p className="text-brand-dark/70 text-[11px] line-clamp-2 mb-4 italic flex-1">
+                  {product.description || 'Sin descripción detallada.'}
+                </p>
                 <div className="flex justify-between items-center mt-auto gap-4">
                     <span className="text-[9px] font-black uppercase text-brand-sage">{product.designOptions?.length || 0} telas</span>
                     <button onClick={() => openModal(product)} className="flex-1 bg-brand-white border border-brand-beige hover:bg-brand-beige text-brand-dark font-bold py-2 rounded-xl text-xs transition-colors">Configurar</button>
@@ -217,33 +219,32 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col border border-brand-beige animate-slideUp">
             <div className="p-6 flex justify-between items-center border-b border-brand-white">
                <h3 className="text-xl font-bold text-brand-dark">{editingId ? 'Editar' : 'Nuevo'} Producto</h3>
-               <button onClick={closeModal} className="text-brand-greige font-bold">✕</button>
+               <button onClick={closeModal} className="text-brand-dark font-bold hover:text-brand-red transition-colors">✕</button>
             </div>
             
             <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Categoría</label>
-                    <select value={formData.categoryId} onChange={e => setFormData({ ...formData, categoryId: e.target.value })} className="w-full px-5 py-3 rounded-xl bg-brand-white border border-brand-beige outline-none font-bold">
+                    <label className="block text-[10px] font-black text-brand-dark/60 uppercase tracking-widest mb-2">Categoría</label>
+                    <select value={formData.categoryId} onChange={e => setFormData({ ...formData, categoryId: e.target.value })} className="w-full px-5 py-3 rounded-xl bg-brand-white border border-brand-beige outline-none font-bold text-brand-dark">
                         <option value="">Sin Categoría</option>
                         {data.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Nombre Comercial</label>
-                    <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-5 py-3 rounded-xl bg-brand-white border border-brand-beige outline-none font-bold" />
+                    <label className="block text-[10px] font-black text-brand-dark/60 uppercase tracking-widest mb-2">Nombre Comercial</label>
+                    <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-5 py-3 rounded-xl bg-brand-white border border-brand-beige outline-none font-bold text-brand-dark" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Mano de Obra ($)</label>
-                    <input type="number" value={formData.baseLaborCost} onChange={e => setFormData({ ...formData, baseLaborCost: Number(e.target.value) })} className="w-full px-5 py-3 rounded-xl bg-brand-white border border-brand-beige outline-none font-bold" />
+                    <label className="block text-[10px] font-black text-brand-dark/60 uppercase tracking-widest mb-2">Mano de Obra ($)</label>
+                    <input type="number" value={formData.baseLaborCost} onChange={e => setFormData({ ...formData, baseLaborCost: Number(e.target.value) })} className="w-full px-5 py-3 rounded-xl bg-brand-white border border-brand-beige outline-none font-bold text-brand-dark" />
                   </div>
                 </div>
-                {/* ... resto del formulario ... */}
               </div>
               <div className="flex gap-4 pt-8">
-                <button type="button" onClick={closeModal} className="flex-1 py-4 text-brand-greige font-bold">Cancelar</button>
-                <button type="submit" className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold">Guardar Producto</button>
+                <button type="button" onClick={closeModal} className="flex-1 py-4 text-brand-dark/50 font-bold hover:text-brand-dark transition-colors">Cancelar</button>
+                <button type="submit" className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold hover:bg-brand-dark transition-all">Guardar Producto</button>
               </div>
             </form>
           </div>

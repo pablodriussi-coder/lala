@@ -84,7 +84,9 @@ const AppContent: React.FC = () => {
                 key={item.path} 
                 to={item.path} 
                 className={`flex items-center gap-3 px-6 py-4 transition-all ${
-                  location.pathname === item.path ? 'sidebar-item-active' : 'text-gray-400 hover:bg-brand-white hover:text-brand-sage'
+                  location.pathname === item.path 
+                  ? 'sidebar-item-active text-brand-dark' 
+                  : 'text-brand-dark/50 hover:bg-brand-white hover:text-brand-sage'
                 }`}
               >
                 <item.icon />
@@ -93,7 +95,7 @@ const AppContent: React.FC = () => {
             ))}
           </nav>
           <div className="p-4 border-t border-brand-beige">
-            <Link to="/" className="block text-center bg-brand-sage text-white p-3 rounded-xl font-bold text-xs">✨ Ver Tienda</Link>
+            <Link to="/" className="block text-center bg-brand-sage text-white p-3 rounded-xl font-bold text-xs shadow-md hover:bg-brand-dark transition-all">✨ Ver Tienda</Link>
           </div>
         </aside>
       )}
