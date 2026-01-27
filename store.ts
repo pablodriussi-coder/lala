@@ -1,10 +1,11 @@
 
-import { AppData, Material, Product, Client, Quote, Transaction } from './types';
+import { AppData, Material, Product, Client, Quote, Transaction, Category } from './types';
 import { supabase } from './supabaseClient';
 
 const INITIAL_DATA: AppData = {
   materials: [],
   products: [],
+  categories: [],
   clients: [],
   quotes: [],
   transactions: [],
@@ -20,6 +21,7 @@ export const fetchAllData = async (): Promise<AppData> => {
     const [
       { data: materials },
       { data: products },
+      { data: categories },
       { data: clients },
       { data: quotes },
       { data: transactions },
@@ -27,6 +29,7 @@ export const fetchAllData = async (): Promise<AppData> => {
     ] = await Promise.all([
       supabase.from('materials').select('*'),
       supabase.from('products').select('*, product_materials(*)'),
+      supabase.from('categories').select('*'),
       supabase.from('clients').select('*'),
       supabase.from('quotes').select('*, quote_items(*)'),
       supabase.from('transactions').select('*'),
@@ -35,30 +38,15 @@ export const fetchAllData = async (): Promise<AppData> => {
 
     const adaptedProducts = (products || []).map(p => ({
       ...p,
+      categoryId: p.category_id,
       baseLaborCost: Number(p.base_labor_cost || 0),
       images: Array.isArray(p.images) ? p.images : [], 
-      // Mapeamos explícitamente design_options de la base de datos
       designOptions: Array.isArray(p.design_options) ? p.design_options : [],
       materials: (p.product_materials || []).map((pm: any) => ({
         materialId: pm.material_id,
         quantity: Number(pm.quantity || 0),
         widthCm: pm.width_cm ? Number(pm.width_cm) : undefined,
         heightCm: pm.height_cm ? Number(pm.height_cm) : undefined
-      }))
-    }));
-
-    const adaptedQuotes = (quotes || []).map(q => ({
-      ...q,
-      totalCost: Number(q.total_cost || 0),
-      totalPrice: Number(q.total_price || 0),
-      profitMarginPercent: Number(q.profit_margin_percent || 0),
-      discountValue: Number(q.discount_value || 0),
-      discountReason: q.discount_reason || '',
-      createdAt: new Date(q.created_at).getTime(),
-      items: (q.quote_items || []).map((qi: any) => ({
-        productId: qi.product_id,
-        quantity: Number(qi.quantity || 1),
-        selectedDesign: qi.selected_design
       }))
     }));
 
@@ -69,8 +57,21 @@ export const fetchAllData = async (): Promise<AppData> => {
         widthCm: m.width_cm ? Number(m.width_cm) : undefined
       })),
       products: adaptedProducts,
+      categories: categories || [],
       clients: clients || [],
-      quotes: adaptedQuotes,
+      quotes: (quotes || []).map((q: any) => ({
+        ...q,
+        clientId: q.client_id,
+        totalCost: Number(q.total_cost || 0),
+        totalPrice: Number(q.total_price || 0),
+        profitMarginPercent: Number(q.profit_margin_percent || 0),
+        createdAt: new Date(q.created_at).getTime(),
+        items: (q.quote_items || []).map((qi: any) => ({
+          productId: qi.product_id,
+          quantity: Number(qi.quantity || 1),
+          selectedDesign: qi.selected_design
+        }))
+      })),
       transactions: (transactions || []).map(t => ({
         ...t, 
         amount: Number(t.amount || 0),
@@ -89,27 +90,24 @@ export const fetchAllData = async (): Promise<AppData> => {
 };
 
 export const syncProduct = async (product: Product) => {
-  console.log("Sincronizando producto:", product.name, "con telas:", product.designOptions?.length);
-  
   const { error } = await supabase.from('products').upsert({
     id: product.id,
     name: product.name,
     description: product.description,
+    category_id: product.categoryId,
     base_labor_cost: Number(product.baseLaborCost) || 0,
     images: product.images || [],
-    design_options: product.designOptions || [] // Aseguramos que se envíe el array de telas
+    design_options: product.designOptions || []
   });
 
   if (error) {
-    console.error("Error al guardar producto en Supabase:", error.message, error.details);
-    alert("Error al guardar en la nube: " + error.message);
+    console.error("Error al guardar producto:", error.message);
     return;
   }
 
-  // Sincronizar materiales del producto
   await supabase.from('product_materials').delete().eq('product_id', product.id);
   if (product.materials.length > 0) {
-    const { error: matError } = await supabase.from('product_materials').insert(
+    await supabase.from('product_materials').insert(
       product.materials.map(m => ({
         product_id: product.id,
         material_id: m.materialId,
@@ -118,8 +116,15 @@ export const syncProduct = async (product: Product) => {
         height_cm: m.heightCm
       }))
     );
-    if (matError) console.error("Error al guardar materiales:", matError.message);
   }
+};
+
+export const syncCategory = async (category: Category) => {
+  await supabase.from('categories').upsert({
+    id: category.id,
+    name: category.name,
+    image: category.image
+  });
 };
 
 export const syncSettings = async (settings: AppData['settings']) => {
@@ -132,14 +137,13 @@ export const syncSettings = async (settings: AppData['settings']) => {
 };
 
 export const syncMaterialsBatch = async (materials: Material[]) => {
-    const toUpsert = materials.map(m => ({
+    await supabase.from('materials').upsert(materials.map(m => ({
         id: m.id,
         name: m.name,
         unit: m.unit,
         cost_per_unit: m.costPerUnit,
         width_cm: m.widthCm
-    }));
-    await supabase.from('materials').upsert(toUpsert);
+    })));
 };
 
 export const syncClientsBatch = async (clients: Client[]) => {

@@ -26,14 +26,21 @@ export interface DesignOption {
   image?: string; // Base64 de la tela
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  image?: string; // Imagen representativa para la tienda
+}
+
 export interface Product {
   id: string;
   name: string;
   description: string;
+  categoryId?: string; // Relación con la categoría
   materials: ProductMaterialRequirement[];
   baseLaborCost: number;
   images?: string[]; 
-  designOptions?: DesignOption[]; // Nuevas opciones de telas
+  designOptions?: DesignOption[]; 
 }
 
 export interface Client {
@@ -48,7 +55,7 @@ export interface QuoteItem {
   productId: string;
   quantity: number;
   customPrice?: number;
-  selectedDesign?: string; // Para presupuestos manuales
+  selectedDesign?: string; 
 }
 
 export interface Quote {
@@ -79,6 +86,7 @@ export interface Transaction {
 export interface AppData {
   materials: Material[];
   products: Product[];
+  categories: Category[]; // Nueva sección de datos
   clients: Client[];
   quotes: Quote[];
   transactions: Transaction[];
