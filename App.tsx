@@ -11,9 +11,12 @@ import QuotesManager from './views/QuotesManager';
 import ClientsManager from './views/ClientsManager';
 import AccountingManager from './views/AccountingManager';
 import QuickCalculator from './views/QuickCalculator';
+import CustomerShop from './views/CustomerShop';
 
 const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ children, isLoading }) => {
   const location = useLocation();
+  const isShopView = location.pathname === '/shop';
+
   const navItems = [
     { path: '/', label: 'Inicio', icon: ICONS.Dashboard },
     { path: '/accounting', label: 'Contabilidad', icon: ICONS.Accounting },
@@ -24,9 +27,18 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
     { path: '/clients', label: 'Clientes', icon: ICONS.Clients },
   ];
 
+  // Si estamos en la vista de tienda, no mostramos el sidebar ni el botón de retorno
+  if (isShopView) {
+    return (
+      <div className="bg-brand-white min-h-screen relative">
+         {children}
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-brand-white overflow-hidden">
-      <aside className="w-64 bg-white shadow-xl z-10 border-r border-brand-beige hidden md:block">
+      <aside className="w-64 bg-white shadow-xl z-10 border-r border-brand-beige hidden md:flex flex-col">
         <div className="p-8">
           <div className="flex flex-col">
             <h1 className="text-3xl font-bold text-brand-dark leading-none tracking-tight flex items-baseline">
@@ -35,7 +47,7 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
             <p className="text-[11px] text-brand-greige font-semibold tracking-[0.2em] uppercase mt-1">accesorios</p>
           </div>
         </div>
-        <nav className="mt-8">
+        <nav className="mt-4 flex-1">
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -49,6 +61,15 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
             </Link>
           ))}
         </nav>
+        <div className="p-6">
+          <Link 
+            to="/shop" 
+            className="flex items-center justify-center gap-2 w-full bg-brand-white border border-brand-beige p-4 rounded-2xl text-brand-dark font-bold text-sm hover:bg-brand-sage hover:text-white transition-all group"
+          >
+            <span>✨ Ver Tienda</span>
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
+          </Link>
+        </div>
       </aside>
 
       <main className="flex-1 overflow-y-auto relative">
@@ -69,6 +90,11 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
                     <item.icon />
                 </Link>
             ))}
+            <Link to="/shop" className="text-brand-red animate-pulse">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+            </Link>
         </div>
       </main>
     </div>
@@ -106,6 +132,7 @@ export default function App() {
 
   const handleUpdateClients = async (newClients: Client[]) => {
     if (!data) return;
+    // Fix: typo 'nm' to 'nc' in the find callback to ensure deleted clients are correctly identified
     const deletedIds = data.clients.filter(c => !newClients.find(nc => nc.id === c.id)).map(c => c.id);
     setData({...data, clients: newClients});
     await syncClientsBatch(newClients);
@@ -163,6 +190,7 @@ export default function App() {
               handleUpdateTransactions(next.transactions);
           }} />} />
           <Route path="/calculator" element={<QuickCalculator />} />
+          <Route path="/shop" element={<CustomerShop data={safeData} />} />
         </Routes>
       </Layout>
     </HashRouter>

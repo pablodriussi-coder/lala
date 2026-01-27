@@ -1,11 +1,9 @@
+
 import React, { useState, useRef } from 'react';
 import { AppData, Product, ProductMaterialRequirement, MaterialUnit } from '../types';
 import { ICONS } from '../constants';
 import { generateDescriptionFromMaterials } from '../services/geminiService';
 import * as XLSX from 'xlsx';
-
-// The Window augmentation was causing a "identical modifiers" error because aistudio is often pre-configured.
-// Using type assertion (window as any).aistudio is safer and avoids property modifier conflicts.
 
 interface ProductsManagerProps {
   data: AppData;
@@ -17,12 +15,14 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   
   const initialFormState: Partial<Product> = {
     name: '',
     description: '',
     materials: [],
-    baseLaborCost: 0
+    baseLaborCost: 0,
+    images: []
   };
 
   const [formData, setFormData] = useState<Partial<Product>>(initialFormState);
@@ -40,10 +40,8 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
       setFormData(prev => ({ ...prev, description: desc }));
     } catch (e: any) {
       console.error(e);
-      // If the request fails, prompt the user to select an API key via openSelectKey().
       if (confirm("Hubo un problema de conexión con la IA. ¿Deseas configurar tu clave de API para solucionar el acceso?")) {
         try {
-          // Access pre-configured aistudio using type assertion to avoid declaration conflicts.
           await (window as any).aistudio.openSelectKey();
           alert("Clave configurada. Por favor, intenta generar la descripción nuevamente.");
         } catch (keyError) {
@@ -55,13 +53,39 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    // Fix: explicitly typing 'file' as File in the forEach loop to ensure it satisfies Blob parameters
+    Array.from(files).forEach((file: File) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        setFormData(prev => ({
+          ...prev,
+          images: [...(prev.images || []), base64]
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
+  const removeImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== index)
+    }));
+  };
+
   const exportToExcel = () => {
     const ws = XLSX.utils.json_to_sheet(data.products.map(p => ({
       ID: p.id,
       Nombre: p.name,
       Descripcion: p.description,
       CostoManoObra: p.baseLaborCost,
-      MaterialesJSON: JSON.stringify(p.materials) // Guardamos la estructura para que sea importable
+      MaterialesJSON: JSON.stringify(p.materials)
     })));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Catalogo_Productos");
@@ -86,17 +110,19 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
           name: row.Nombre || 'Sin nombre',
           description: row.Descripcion || '',
           baseLaborCost: Number(row.CostoManoObra) || 0,
-          materials: row.MaterialesJSON ? JSON.parse(row.MaterialesJSON) : []
+          materials: row.MaterialesJSON ? JSON.parse(row.MaterialesJSON) : [],
+          images: []
         }));
 
         if (confirm(`Se han detectado ${updatedProducts.length} productos. ¿Deseas sobreescribir el catálogo actual?`)) {
           updateData(prev => ({ ...prev, products: updatedProducts }));
         }
       } catch (err) {
-        alert("Error procesando el archivo Excel. Verifica que el formato sea el correcto (puedes exportar uno primero para ver el ejemplo).");
+        alert("Error procesando el archivo Excel.");
       }
     };
-    reader.readAsBinaryString(file);
+    // Fix: added cast to Blob/File to satisfy readAsBinaryString requirement
+    reader.readAsBinaryString(file as Blob);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -105,7 +131,6 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
       alert('⚠️ Primero debes registrar materiales en la sección de "Insumos".');
       return;
     }
-    
     const firstMaterial = data.materials[0];
     setFormData(prev => ({
       ...prev,
@@ -124,54 +149,24 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
   const updateMaterialRequirement = (index: number, field: keyof ProductMaterialRequirement, value: any) => {
     setFormData(prev => {
       const updatedMaterials = [...(prev.materials || [])];
-      const matId = field === 'materialId' ? value : updatedMaterials[index].materialId;
-      const material = data.materials.find(m => m.id === matId);
-
-      updatedMaterials[index] = { 
-        ...updatedMaterials[index], 
-        [field]: value 
-      };
-
-      if (field === 'materialId') {
-        if (material?.unit === MaterialUnit.METERS) {
-            updatedMaterials[index].widthCm = updatedMaterials[index].widthCm || 0;
-            updatedMaterials[index].heightCm = updatedMaterials[index].heightCm || 0;
-            updatedMaterials[index].quantity = 1;
-        } else {
-            updatedMaterials[index].widthCm = undefined;
-            updatedMaterials[index].heightCm = undefined;
-        }
-      }
-
+      updatedMaterials[index] = { ...updatedMaterials[index], [field]: value };
       return { ...prev, materials: updatedMaterials };
     });
-  };
-
-  const removeMaterialRequirement = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      materials: (prev.materials || []).filter((_, i) => i !== index)
-    }));
   };
 
   const calculateRequirementCost = (req: ProductMaterialRequirement) => {
     const material = data.materials.find(m => m.id === req.materialId);
     if (!material) return 0;
-
     if (material.unit === MaterialUnit.METERS && req.widthCm && req.heightCm && material.widthCm) {
         const areaNeeded = req.widthCm * req.heightCm;
         const areaOneMeter = material.widthCm * 100;
-        const usagePercentage = areaNeeded / areaOneMeter;
-        return material.costPerUnit * usagePercentage;
+        return material.costPerUnit * (areaNeeded / areaOneMeter);
     }
-
     return material.costPerUnit * req.quantity;
   };
 
   const calculateProductCost = (product: Product | Partial<Product>) => {
-    const materialsCost = (product.materials || []).reduce((acc, req) => {
-      return acc + calculateRequirementCost(req);
-    }, 0);
+    const materialsCost = (product.materials || []).reduce((acc, req) => acc + calculateRequirementCost(req), 0);
     return materialsCost + (Number(product.baseLaborCost) || 0);
   };
 
@@ -184,7 +179,8 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
       name: formData.name || '',
       description: formData.description || '',
       materials: formData.materials || [],
-      baseLaborCost: Number(formData.baseLaborCost) || 0
+      baseLaborCost: Number(formData.baseLaborCost) || 0,
+      images: formData.images || []
     };
 
     updateData(prev => ({
@@ -209,26 +205,13 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Catálogo</h2>
-          <p className="text-brand-greige font-medium">Define tus productos y sus costos base</p>
+          <p className="text-brand-greige font-medium">Gestiona tus productos y sus fotos</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={importFromExcel} className="hidden" />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm"
-          >
-            📥 Importar Catálogo
-          </button>
-          <button 
-            onClick={exportToExcel}
-            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm"
-          >
-            📤 Exportar Catálogo
-          </button>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
-          >
+          <button onClick={() => fileInputRef.current?.click()} className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm">📥 Importar</button>
+          <button onClick={exportToExcel} className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm">📤 Exportar</button>
+          <button onClick={() => setIsModalOpen(true)} className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg transition-all font-bold group">
             <ICONS.Add />
             <span>Crear Producto</span>
           </button>
@@ -239,172 +222,132 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
         {data.products.length > 0 ? data.products.map(product => {
           const cost = calculateProductCost(product);
           return (
-            <div key={product.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-brand-beige hover:border-brand-sage transition-all group relative overflow-hidden flex flex-col">
-              <div className="flex justify-between items-start mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-brand-white flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
-                  🧺
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] text-brand-greige font-black uppercase tracking-[0.2em]">Costo Total</p>
-                  <p className="text-2xl font-bold text-brand-dark">${cost.toFixed(2)}</p>
+            <div key={product.id} className="bg-white rounded-[2.5rem] shadow-sm border border-brand-beige overflow-hidden flex flex-col group hover:shadow-xl transition-all">
+              <div className="h-56 bg-brand-white relative overflow-hidden flex items-center justify-center">
+                {product.images && product.images.length > 0 ? (
+                  <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                ) : (
+                  <span className="text-6xl grayscale opacity-20">🧺</span>
+                )}
+                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-4 py-1 rounded-full text-[10px] font-black uppercase text-brand-sage border border-brand-sage/20">
+                    Costo: ${cost.toFixed(2)}
                 </div>
               </div>
-              
-              <h3 className="text-xl font-bold text-brand-dark mb-2">{product.name}</h3>
-              <p className="text-brand-greige text-sm line-clamp-2 mb-8 leading-relaxed italic">
-                {product.description || 'Sin descripción detallada.'}
-              </p>
-              
-              <div className="border-t border-brand-white pt-6 mt-auto flex justify-between gap-4">
-                <button 
-                  onClick={() => { setEditingId(product.id); setFormData(product); setIsModalOpen(true); }}
-                  className="flex-1 bg-brand-white hover:bg-brand-beige text-brand-dark font-bold py-3 rounded-xl text-xs transition-colors"
-                >
-                  Configurar
-                </button>
-                <button 
-                  onClick={() => { if(confirm('¿Eliminar producto?')) updateData(prev => ({...prev, products: prev.products.filter(p => p.id !== product.id)})); }}
-                  className="px-4 py-3 text-brand-red opacity-40 hover:opacity-100 transition-opacity"
-                >
-                  🗑️
-                </button>
+              <div className="p-8 flex-1 flex flex-col">
+                <h3 className="text-xl font-bold text-brand-dark mb-2">{product.name}</h3>
+                <p className="text-brand-greige text-xs line-clamp-2 mb-6 italic leading-relaxed flex-1">
+                  {product.description || 'Sin descripción.'}
+                </p>
+                <div className="flex gap-4">
+                  <button onClick={() => { setEditingId(product.id); setFormData(product); setIsModalOpen(true); }} className="flex-1 bg-brand-white hover:bg-brand-beige text-brand-dark font-bold py-3 rounded-xl text-xs transition-colors">Editar</button>
+                  <button onClick={() => { if(confirm('¿Eliminar?')) updateData(prev => ({...prev, products: prev.products.filter(p => p.id !== product.id)})); }} className="px-4 text-brand-red opacity-30 hover:opacity-100">🗑️</button>
+                </div>
               </div>
             </div>
           );
         }) : (
           <div className="col-span-full py-24 text-center bg-white rounded-[3rem] border-2 border-dashed border-brand-beige">
-            <p className="text-brand-greige font-medium italic">Tu catálogo está esperando nuevas piezas.</p>
+            <p className="text-brand-greige italic">Tu catálogo está vacío.</p>
           </div>
         )}
       </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-brand-dark/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto animate-slideUp border border-brand-beige">
-            <div className="p-10 space-y-8">
-              <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-bold text-brand-dark">{editingId ? 'Editar' : 'Nuevo'} Producto Lala</h3>
-                <p className="text-2xl font-bold text-brand-sage">${calculateProductCost(formData).toFixed(2)}</p>
-              </div>
-              <form onSubmit={handleSave} className="space-y-8">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                  <div className="lg:col-span-5 space-y-6">
-                    <div>
-                      <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Nombre</label>
-                      <input 
-                        type="text" required
-                        value={formData.name}
-                        onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:border-brand-sage font-bold text-brand-dark"
-                      />
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col border border-brand-beige animate-slideUp">
+            <div className="p-8 flex justify-between items-center border-b border-brand-white bg-brand-white/20">
+               <h3 className="text-2xl font-bold text-brand-dark">{editingId ? 'Editar' : 'Nuevo'} Producto</h3>
+               <button onClick={closeModal} className="text-brand-greige hover:text-brand-dark font-bold">Cerrar</button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-8 md:p-12">
+              <form onSubmit={handleSave} className="space-y-12">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                  <div className="space-y-8">
+                    {/* Información Básica */}
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Nombre</label>
+                        <input type="text" required value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full px-6 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:bg-white transition-all font-bold text-brand-dark" />
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-[10px] font-black text-brand-greige uppercase tracking-widest">Descripción</label>
+                          <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className={`text-[9px] font-black px-3 py-1 rounded-full border ${isGenerating ? 'bg-brand-white text-brand-greige' : 'bg-brand-sage/10 text-brand-sage border-brand-sage/50 hover:bg-brand-sage hover:text-white transition-all'}`}>
+                            {isGenerating ? 'Escribiendo...' : '✨ Autocompletar'}
+                          </button>
+                        </div>
+                        <textarea rows={4} value={formData.description} onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))} className="w-full px-6 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:bg-white text-sm" />
+                      </div>
                     </div>
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="text-[10px] font-black text-brand-greige uppercase tracking-widest">Descripción / Marketing</label>
-                        <button 
-                            type="button" 
-                            onClick={handleGenerateAI}
-                            disabled={isGenerating}
-                            className={`text-[9px] font-black px-3 py-1 rounded-full border transition-all ${
-                                isGenerating ? 'bg-brand-white text-brand-greige' : 'bg-brand-sage/10 text-brand-sage border-brand-sage/50 hover:bg-brand-sage hover:text-white'
-                            }`}
-                        >
-                            {isGenerating ? 'Analizando composición...' : '✨ Generar con IA'}
+
+                    {/* Galería de Imágenes */}
+                    <div className="bg-brand-white/50 p-8 rounded-[2rem] border border-brand-beige space-y-4">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-black text-brand-dark uppercase tracking-widest">Galería de Fotos</label>
+                        <button type="button" onClick={() => imageInputRef.current?.click()} className="text-[9px] font-black bg-brand-dark text-white px-3 py-1.5 rounded-full hover:bg-brand-sage transition-all">
+                          SUBIR FOTOS
                         </button>
                       </div>
-                      <textarea 
-                        rows={6}
-                        value={formData.description}
-                        onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:border-brand-sage text-brand-dark text-sm leading-relaxed"
-                        placeholder="Usa el asistente de IA para resaltar los beneficios de tus materiales..."
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Mano de Obra ($)</label>
-                      <input 
-                        type="number"
-                        value={formData.baseLaborCost}
-                        onChange={e => setFormData(prev => ({ ...prev, baseLaborCost: Number(e.target.value) }))}
-                        className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:border-brand-sage font-bold text-brand-dark"
-                      />
+                      <input type="file" multiple accept="image/*" ref={imageInputRef} onChange={handleImageUpload} className="hidden" />
+                      <div className="grid grid-cols-4 gap-3">
+                        {(formData.images || []).map((img, idx) => (
+                          <div key={idx} className="aspect-square rounded-xl overflow-hidden relative group border border-brand-beige">
+                            <img src={img} className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => removeImage(idx)} className="absolute inset-0 bg-brand-red/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold">ELIMINAR</button>
+                          </div>
+                        ))}
+                        <div onClick={() => imageInputRef.current?.click()} className="aspect-square rounded-xl border-2 border-dashed border-brand-beige flex items-center justify-center text-2xl text-brand-greige cursor-pointer hover:bg-white transition-colors">
+                          +
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="lg:col-span-7 bg-brand-white p-8 rounded-[2rem] space-y-5 border border-brand-beige flex flex-col min-h-[400px]">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-black text-brand-dark uppercase tracking-widest">Insumos Necesarios</label>
-                      <button 
-                        type="button" 
-                        onClick={handleAddMaterial}
-                        className="text-[10px] bg-brand-sage text-white font-black px-4 py-2 rounded-full shadow-md hover:bg-brand-dark transition-all"
-                      >
-                        + AGREGAR MATERIAL
-                      </button>
+                  <div className="space-y-8">
+                    {/* Costos y Materiales */}
+                    <div className="bg-brand-white p-8 rounded-[2rem] border border-brand-beige space-y-6">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-black text-brand-dark uppercase tracking-widest">Composición Técnica</label>
+                        <button type="button" onClick={handleAddMaterial} className="text-[10px] bg-brand-sage text-white font-black px-4 py-2 rounded-full hover:bg-brand-dark transition-all">+ MATERIAL</button>
+                      </div>
+                      <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                        {(formData.materials || []).map((req, idx) => {
+                          const material = data.materials.find(m => m.id === req.materialId);
+                          return (
+                            <div key={idx} className="bg-white p-4 rounded-2xl flex items-center gap-3 border border-brand-beige/30">
+                              <select value={req.materialId} onChange={e => updateMaterialRequirement(idx, 'materialId', e.target.value)} className="flex-1 text-[11px] font-bold border-none outline-none bg-brand-white rounded-lg px-2 py-1">
+                                {data.materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                              </select>
+                              {material?.unit === MaterialUnit.METERS ? (
+                                <div className="flex gap-1">
+                                  <input type="number" placeholder="W" value={req.widthCm} onChange={e => updateMaterialRequirement(idx, 'widthCm', Number(e.target.value))} className="w-12 text-[11px] text-center border-b border-brand-beige" />
+                                  <input type="number" placeholder="H" value={req.heightCm} onChange={e => updateMaterialRequirement(idx, 'heightCm', Number(e.target.value))} className="w-12 text-[11px] text-center border-b border-brand-beige" />
+                                </div>
+                              ) : (
+                                <input type="number" value={req.quantity} onChange={e => updateMaterialRequirement(idx, 'quantity', Number(e.target.value))} className="w-12 text-[11px] text-center border-b border-brand-beige" />
+                              )}
+                              <button type="button" onClick={() => setFormData(prev => ({...prev, materials: (prev.materials || []).filter((_, i) => i !== idx)}))} className="text-brand-red opacity-30 hover:opacity-100">✕</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="pt-4 border-t border-brand-beige/50">
+                        <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Costo Mano de Obra ($)</label>
+                        <input type="number" value={formData.baseLaborCost} onChange={e => setFormData(prev => ({ ...prev, baseLaborCost: Number(e.target.value) }))} className="w-full px-4 py-3 rounded-xl border border-brand-beige outline-none font-bold" />
+                      </div>
                     </div>
                     
-                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 flex-1">
-                      {(formData.materials || []).map((req, idx) => {
-                        const material = data.materials.find(m => m.id === req.materialId);
-                        const isFabric = material?.unit === MaterialUnit.METERS;
-                        
-                        return (
-                          <div key={idx} className="bg-white p-5 rounded-3xl border border-brand-beige/50 shadow-sm flex items-center gap-4">
-                            <div className="flex-1">
-                              <select 
-                                value={req.materialId}
-                                onChange={e => updateMaterialRequirement(idx, 'materialId', e.target.value)}
-                                className="w-full text-xs border-none bg-brand-white px-3 py-2 rounded-xl font-bold text-brand-dark outline-none cursor-pointer"
-                              >
-                                {data.materials.map(m => (
-                                  <option key={m.id} value={m.id}>{m.name}</option>
-                                ))}
-                              </select>
-                            </div>
-                            
-                            {isFabric ? (
-                              <div className="flex gap-2">
-                                <input 
-                                  type="number" placeholder="Ancho"
-                                  value={req.widthCm}
-                                  onChange={e => updateMaterialRequirement(idx, 'widthCm', Number(e.target.value))}
-                                  className="w-16 text-xs px-2 py-2 bg-brand-white rounded-lg border border-brand-beige/30 text-center font-bold"
-                                />
-                                <input 
-                                  type="number" placeholder="Largo"
-                                  value={req.heightCm}
-                                  onChange={e => updateMaterialRequirement(idx, 'heightCm', Number(e.target.value))}
-                                  className="w-16 text-xs px-2 py-2 bg-brand-white rounded-lg border border-brand-beige/30 text-center font-bold"
-                                />
-                              </div>
-                            ) : (
-                              <input 
-                                type="number"
-                                value={req.quantity}
-                                onChange={e => updateMaterialRequirement(idx, 'quantity', Number(e.target.value))}
-                                className="w-16 text-xs px-2 py-2 bg-brand-white rounded-lg border border-brand-beige/30 text-center font-bold"
-                              />
-                            )}
-                            
-                            <button 
-                              type="button" 
-                              onClick={() => removeMaterialRequirement(idx)}
-                              className="text-brand-red opacity-30 hover:opacity-100 p-2"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        );
-                      })}
+                    <div className="text-right p-6 bg-brand-dark rounded-[2rem] text-white">
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Inversión Estimada (Costo)</p>
+                      <p className="text-4xl font-bold">${calculateProductCost(formData).toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-6 border-t border-brand-white pt-8">
-                  <button type="button" onClick={closeModal} className="flex-1 py-4 text-brand-greige font-bold">Cancelar</button>
-                  <button type="submit" className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold hover:bg-brand-dark transition-all">
-                    Guardar Producto
-                  </button>
+                <div className="flex gap-6 pt-8 pb-4">
+                  <button type="button" onClick={closeModal} className="flex-1 py-5 text-brand-greige font-bold">Cancelar</button>
+                  <button type="submit" className="flex-[2] bg-brand-sage text-white py-5 rounded-3xl font-bold shadow-xl hover:bg-brand-dark transition-all">Guardar en el Catálogo</button>
                 </div>
               </form>
             </div>

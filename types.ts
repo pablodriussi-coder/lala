@@ -26,6 +26,7 @@ export interface Product {
   description: string;
   materials: ProductMaterialRequirement[];
   baseLaborCost: number;
+  images?: string[]; // Array de strings Base64
 }
 
 export interface Client {

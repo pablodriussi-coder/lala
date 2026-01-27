@@ -37,6 +37,7 @@ export const fetchAllData = async (): Promise<AppData> => {
     const adaptedProducts = (products || []).map(p => ({
       ...p,
       baseLaborCost: Number(p.base_labor_cost),
+      images: p.images || [], // Cargar imágenes
       materials: (p.product_materials || []).map((pm: any) => ({
         materialId: pm.material_id,
         quantity: Number(pm.quantity),
@@ -81,7 +82,6 @@ export const fetchAllData = async (): Promise<AppData> => {
   }
 };
 
-// Sincronización masiva para evitar fallos de red
 export const syncMaterialsBatch = async (materials: Material[]) => {
     const toUpsert = materials.map(m => ({
         id: m.id,
@@ -109,7 +109,8 @@ export const syncProduct = async (product: Product) => {
     id: product.id,
     name: product.name,
     description: product.description,
-    base_labor_cost: product.baseLaborCost
+    base_labor_cost: product.baseLaborCost,
+    images: product.images || [] // Guardar imágenes
   });
   if (pError) return console.error('Error syncing product:', pError.message);
 
