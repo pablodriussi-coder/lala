@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { AppData, Product, ProductMaterialRequirement, MaterialUnit } from '../types';
 import { ICONS } from '../constants';
+import { generateDescriptionFromMaterials } from '../services/geminiService';
 import * as XLSX from 'xlsx';
 
 interface ProductsManagerProps {
@@ -12,6 +13,7 @@ interface ProductsManagerProps {
 const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const initialFormState: Partial<Product> = {
@@ -22,6 +24,24 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
   };
 
   const [formData, setFormData] = useState<Partial<Product>>(initialFormState);
+
+  const handleGenerateAI = async () => {
+    if (!formData.name) return alert("Por favor, ingresa el nombre del producto.");
+    
+    setIsGenerating(true);
+    try {
+      const desc = await generateDescriptionFromMaterials(
+        formData.name,
+        formData.materials || [],
+        data.materials
+      );
+      setFormData(prev => ({ ...prev, description: desc }));
+    } catch (e) {
+      alert("No se pudo conectar con el asistente de IA.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleAddMaterial = () => {
     if (!data.materials || data.materials.length === 0) {
@@ -124,6 +144,7 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
     setIsModalOpen(false);
     setEditingId(null);
     setFormData(initialFormState);
+    setIsGenerating(false);
   };
 
   const exportToExcel = () => {
@@ -134,75 +155,10 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
       CostoManoObra: p.baseLaborCost
     }));
 
-    const materialsReqData: any[] = [];
-    data.products.forEach(p => {
-      p.materials.forEach(req => {
-        const mat = data.materials.find(m => m.id === req.materialId);
-        materialsReqData.push({
-          ProductoID: p.id,
-          MaterialNombre: mat?.name || 'Desconocido',
-          MaterialID: req.materialId,
-          Cantidad_O_Retazo: req.quantity,
-          AnchoCm: req.widthCm || '',
-          LargoCm: req.heightCm || ''
-        });
-      });
-    });
-
     const wb = XLSX.utils.book_new();
     const ws1 = XLSX.utils.json_to_sheet(mainData);
-    const ws2 = XLSX.utils.json_to_sheet(materialsReqData);
     XLSX.utils.book_append_sheet(wb, ws1, "Productos");
-    XLSX.utils.book_append_sheet(wb, ws2, "RequisitosMateriales");
     XLSX.writeFile(wb, "Lala_Catalogo.xlsx");
-  };
-
-  const importFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const bstr = event.target?.result;
-      const wb = XLSX.read(bstr, { type: 'binary' });
-      
-      const wsProd = wb.Sheets[wb.SheetNames[0]];
-      const wsReq = wb.Sheets[wb.SheetNames[1]];
-      
-      const importedProducts = XLSX.utils.sheet_to_json(wsProd) as any[];
-      const importedReqs = XLSX.utils.sheet_to_json(wsReq) as any[];
-
-      const finalProducts: Product[] = importedProducts.map(pRow => {
-        const productID = pRow.ID || crypto.randomUUID();
-        const productReqs = importedReqs.filter(r => r.ProductoID === productID || r.ProductoID === pRow.ID);
-        
-        return {
-          id: productID,
-          name: pRow.Nombre || 'Sin nombre',
-          description: pRow.Descripcion || '',
-          baseLaborCost: Number(pRow.CostoManoObra) || 0,
-          materials: productReqs.map(req => {
-            let matId = req.MaterialID;
-            if (!data.materials.some(m => m.id === matId)) {
-                const foundByName = data.materials.find(m => m.name === req.MaterialNombre);
-                if (foundByName) matId = foundByName.id;
-            }
-            return {
-              materialId: matId,
-              quantity: Number(req.Cantidad_O_Retazo) || 1,
-              widthCm: req.AnchoCm ? Number(req.AnchoCm) : undefined,
-              heightCm: req.LargoCm ? Number(req.LargoCm) : undefined
-            };
-          })
-        };
-      });
-
-      if (confirm(`Se han detectado ${finalProducts.length} productos. ¿Deseas sobreescribir el catálogo actual?`)) {
-        updateData(prev => ({ ...prev, products: finalProducts }));
-      }
-    };
-    reader.readAsBinaryString(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -213,25 +169,6 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
           <p className="text-brand-greige font-medium">Define tus productos y sus costos base</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <input 
-            type="file" 
-            accept=".xlsx, .xls" 
-            ref={fileInputRef} 
-            onChange={importFromExcel} 
-            className="hidden" 
-          />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
-          >
-            📥 Importar Catálogo
-          </button>
-          <button 
-            onClick={exportToExcel}
-            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 border border-brand-beige transition-all font-bold text-sm"
-          >
-            📤 Exportar Catálogo
-          </button>
           <button 
             onClick={() => setIsModalOpen(true)}
             className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
@@ -247,10 +184,6 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
           const cost = calculateProductCost(product);
           return (
             <div key={product.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-brand-beige hover:border-brand-sage transition-all group relative overflow-hidden flex flex-col">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <span className="text-7xl">★</span>
-              </div>
-              
               <div className="flex justify-between items-start mb-6">
                 <div className="w-14 h-14 rounded-2xl bg-brand-white flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
                   🧺
@@ -284,9 +217,6 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
           );
         }) : (
           <div className="col-span-full py-24 text-center bg-white rounded-[3rem] border-2 border-dashed border-brand-beige">
-            <div className="text-brand-greige mb-4 opacity-30">
-              <span className="text-6xl">🧸</span>
-            </div>
             <p className="text-brand-greige font-medium italic">Tu catálogo está esperando nuevas piezas.</p>
           </div>
         )}
@@ -294,37 +224,44 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-brand-dark/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-slideUp border border-brand-beige">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto animate-slideUp border border-brand-beige">
             <div className="p-10 space-y-8">
               <div className="flex justify-between items-center">
                 <h3 className="text-2xl font-bold text-brand-dark">{editingId ? 'Editar' : 'Nuevo'} Producto Lala</h3>
-                <div className="flex flex-col items-end">
-                    <p className="text-[10px] text-brand-greige font-black uppercase">Costo Base Calculado</p>
-                    <p className="text-2xl font-bold text-brand-sage">${calculateProductCost(formData).toFixed(2)}</p>
-                </div>
+                <p className="text-2xl font-bold text-brand-sage">${calculateProductCost(formData).toFixed(2)}</p>
               </div>
               <form onSubmit={handleSave} className="space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                  <div className="lg:col-span-4 space-y-5">
+                  <div className="lg:col-span-5 space-y-6">
                     <div>
-                      <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Denominación</label>
+                      <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Nombre</label>
                       <input 
-                        type="text" 
-                        required
+                        type="text" required
                         value={formData.name}
                         onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
                         className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:border-brand-sage font-bold text-brand-dark"
-                        placeholder="Ej: Portachupetes Estrella"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Detalles</label>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-[10px] font-black text-brand-greige uppercase tracking-widest">Descripción / Marketing</label>
+                        <button 
+                            type="button" 
+                            onClick={handleGenerateAI}
+                            disabled={isGenerating}
+                            className={`text-[9px] font-black px-3 py-1 rounded-full border transition-all ${
+                                isGenerating ? 'bg-brand-white text-brand-greige' : 'bg-brand-sage/10 text-brand-sage border-brand-sage/50 hover:bg-brand-sage hover:text-white'
+                            }`}
+                        >
+                            {isGenerating ? 'Analizando composición...' : '✨ Generar con IA'}
+                        </button>
+                      </div>
                       <textarea 
-                        rows={3}
+                        rows={6}
                         value={formData.description}
                         onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:border-brand-sage text-brand-dark"
-                        placeholder="Características del producto..."
+                        className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none focus:border-brand-sage text-brand-dark text-sm leading-relaxed"
+                        placeholder="Usa el asistente de IA para resaltar los beneficios de tus materiales..."
                       />
                     </div>
                     <div>
@@ -338,9 +275,9 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                     </div>
                   </div>
 
-                  <div className="lg:col-span-8 bg-brand-white p-8 rounded-[2rem] space-y-5 border border-brand-beige flex flex-col min-h-[400px]">
+                  <div className="lg:col-span-7 bg-brand-white p-8 rounded-[2rem] space-y-5 border border-brand-beige flex flex-col min-h-[400px]">
                     <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-black text-brand-dark uppercase tracking-widest">Recetario de Insumos</label>
+                      <label className="text-[10px] font-black text-brand-dark uppercase tracking-widest">Insumos Necesarios</label>
                       <button 
                         type="button" 
                         onClick={handleAddMaterial}
@@ -354,94 +291,63 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                       {(formData.materials || []).map((req, idx) => {
                         const material = data.materials.find(m => m.id === req.materialId);
                         const isFabric = material?.unit === MaterialUnit.METERS;
-                        const reqCost = calculateRequirementCost(req);
                         
                         return (
-                          <div key={idx} className="bg-white p-5 rounded-3xl border border-brand-beige/50 shadow-sm animate-fadeIn group">
-                            <div className="flex flex-wrap items-center gap-4">
-                              <div className="flex-1 min-w-[200px]">
-                                <label className="text-[9px] font-black text-brand-greige uppercase block mb-1">Insumo</label>
-                                <select 
-                                  value={req.materialId}
-                                  onChange={e => updateMaterialRequirement(idx, 'materialId', e.target.value)}
-                                  className="w-full text-xs border-none bg-brand-white px-4 py-2 rounded-xl font-bold text-brand-dark outline-none cursor-pointer"
-                                >
-                                  {data.materials.map(m => (
-                                    <option key={m.id} value={m.id}>{m.name} ({m.unit})</option>
-                                  ))}
-                                </select>
-                              </div>
-                              
-                              {isFabric ? (
-                                <>
-                                  <div className="w-24">
-                                    <label className="text-[9px] font-black text-brand-greige uppercase block mb-1">Ancho (cm)</label>
-                                    <input 
-                                      type="number"
-                                      value={req.widthCm}
-                                      onChange={e => updateMaterialRequirement(idx, 'widthCm', Number(e.target.value))}
-                                      className="w-full text-xs px-3 py-2 bg-brand-white rounded-xl border border-brand-beige/30 text-center font-bold text-brand-dark"
-                                    />
-                                  </div>
-                                  <div className="w-24">
-                                    <label className="text-[9px] font-black text-brand-greige uppercase block mb-1">Largo (cm)</label>
-                                    <input 
-                                      type="number"
-                                      value={req.heightCm}
-                                      onChange={e => updateMaterialRequirement(idx, 'heightCm', Number(e.target.value))}
-                                      className="w-full text-xs px-3 py-2 bg-brand-white rounded-xl border border-brand-beige/30 text-center font-bold text-brand-dark"
-                                    />
-                                  </div>
-                                  <div className="pt-4 px-2">
-                                      <div className="text-[10px] font-bold text-brand-sage bg-brand-sage/10 px-3 py-1 rounded-full">
-                                          {material.widthCm ? `${((req.widthCm || 0) * (req.heightCm || 0) / (material.widthCm * 100) * 100).toFixed(1)}%` : '-%'}
-                                      </div>
-                                  </div>
-                                </>
-                              ) : (
-                                <div className="w-24">
-                                  <label className="text-[9px] font-black text-brand-greige uppercase block mb-1">Cant. ({material?.unit})</label>
-                                  <input 
-                                    type="number"
-                                    step="0.01"
-                                    value={req.quantity}
-                                    onChange={e => updateMaterialRequirement(idx, 'quantity', Number(e.target.value))}
-                                    className="w-full text-xs px-3 py-2 bg-brand-white rounded-xl border border-brand-beige/30 text-center font-bold text-brand-dark"
-                                  />
-                                </div>
-                              )}
-                              
-                              <div className="flex-1 text-right min-w-[80px]">
-                                <p className="text-[9px] font-black text-brand-greige uppercase">Subtotal</p>
-                                <p className="text-sm font-bold text-brand-dark">${reqCost.toFixed(2)}</p>
-                              </div>
-                              
-                              <button 
-                                type="button" 
-                                onClick={() => removeMaterialRequirement(idx)}
-                                className="text-brand-red opacity-30 hover:opacity-100 p-2 transition-opacity"
+                          <div key={idx} className="bg-white p-5 rounded-3xl border border-brand-beige/50 shadow-sm flex items-center gap-4">
+                            <div className="flex-1">
+                              <select 
+                                value={req.materialId}
+                                onChange={e => updateMaterialRequirement(idx, 'materialId', e.target.value)}
+                                className="w-full text-xs border-none bg-brand-white px-3 py-2 rounded-xl font-bold text-brand-dark outline-none cursor-pointer"
                               >
-                                ✕
-                              </button>
+                                {data.materials.map(m => (
+                                  <option key={m.id} value={m.id}>{m.name}</option>
+                                ))}
+                              </select>
                             </div>
+                            
+                            {isFabric ? (
+                              <div className="flex gap-2">
+                                <input 
+                                  type="number" placeholder="Ancho"
+                                  value={req.widthCm}
+                                  onChange={e => updateMaterialRequirement(idx, 'widthCm', Number(e.target.value))}
+                                  className="w-16 text-xs px-2 py-2 bg-brand-white rounded-lg border border-brand-beige/30 text-center font-bold"
+                                />
+                                <input 
+                                  type="number" placeholder="Largo"
+                                  value={req.heightCm}
+                                  onChange={e => updateMaterialRequirement(idx, 'heightCm', Number(e.target.value))}
+                                  className="w-16 text-xs px-2 py-2 bg-brand-white rounded-lg border border-brand-beige/30 text-center font-bold"
+                                />
+                              </div>
+                            ) : (
+                              <input 
+                                type="number"
+                                value={req.quantity}
+                                onChange={e => updateMaterialRequirement(idx, 'quantity', Number(e.target.value))}
+                                className="w-16 text-xs px-2 py-2 bg-brand-white rounded-lg border border-brand-beige/30 text-center font-bold"
+                              />
+                            )}
+                            
+                            <button 
+                              type="button" 
+                              onClick={() => removeMaterialRequirement(idx)}
+                              className="text-brand-red opacity-30 hover:opacity-100 p-2"
+                            >
+                              ✕
+                            </button>
                           </div>
                         );
                       })}
-                      
-                      {(formData.materials || []).length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-20 opacity-30">
-                          <span className="text-4xl mb-2">🧵</span>
-                          <p className="text-sm italic font-medium">Asigna materiales para calcular costos</p>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex gap-6 border-t border-brand-white pt-8">
-                  <button type="button" onClick={closeModal} className="flex-1 py-4 text-brand-greige font-bold hover:text-brand-dark transition-colors">Cancelar</button>
-                  <button type="submit" className="flex-[2] bg-brand-sage text-white px-10 py-4 rounded-[1.5rem] font-bold hover:bg-brand-dark transition-all shadow-xl shadow-brand-sage/10">
-                    Guardar Cambios
+                  <button type="button" onClick={closeModal} className="flex-1 py-4 text-brand-greige font-bold">Cancelar</button>
+                  <button type="submit" className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold hover:bg-brand-dark transition-all">
+                    Guardar Producto
                   </button>
                 </div>
               </form>
