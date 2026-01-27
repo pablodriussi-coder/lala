@@ -30,7 +30,7 @@ export const fetchAllData = async (): Promise<AppData> => {
       { data: quotes },
       { data: transactions },
       { data: showroom },
-      { data: settingsResponse } // Cambiado para manejar error de .single()
+      { data: settingsResponse }
     ] = await Promise.all([
       supabase.from('materials').select('*'),
       supabase.from('products').select('*, product_materials(*)'),
@@ -38,8 +38,8 @@ export const fetchAllData = async (): Promise<AppData> => {
       supabase.from('clients').select('*'),
       supabase.from('quotes').select('*, quote_items(*)'),
       supabase.from('transactions').select('*'),
-      supabase.from('showroom_entries').select('*'),
-      supabase.from('settings').select('*').eq('id', 'default') // Quitamos .single() para evitar crash
+      supabase.from('showroom_entries').select('*').order('date', { ascending: false }),
+      supabase.from('settings').select('*').eq('id', 'default')
     ]);
 
     const settingsData = settingsResponse && settingsResponse.length > 0 ? settingsResponse[0] : null;
@@ -112,8 +112,8 @@ export const syncSettings = async (settings: AppData['settings']) => {
     brand_name: settings.brandName,
     default_margin: settings.defaultMargin,
     whatsapp_number: settings.whatsappNumber,
-    instagram_url: settings.instagramUrl,
-    facebook_url: settings.facebookUrl,
+    instagram_url: settings.instagramUrl || '',
+    facebook_url: settings.facebookUrl || '',
     shop_banner_image: settings.shopBannerImage,
     shop_banner_text: settings.shopBannerText,
     shop_logo: settings.shopLogo
@@ -159,6 +159,7 @@ export const syncProduct = async (product: Product) => {
     );
   }
 };
+
 export const syncCategory = async (category: Category) => {
   await supabase.from('categories').upsert({
     id: category.id,
@@ -166,21 +167,25 @@ export const syncCategory = async (category: Category) => {
     image: category.image
   });
 };
+
 export const syncMaterialsBatch = async (materials: Material[]) => {
-    await supabase.from('materials').upsert(materials.map(m => ({
-        id: m.id,
-        name: m.name,
-        unit: m.unit,
-        cost_per_unit: m.costPerUnit,
-        width_cm: m.widthCm
-    })));
+  await supabase.from('materials').upsert(materials.map(m => ({
+    id: m.id,
+    name: m.name,
+    unit: m.unit,
+    cost_per_unit: m.costPerUnit,
+    width_cm: m.widthCm
+  })));
 };
+
 export const syncClientsBatch = async (clients: Client[]) => {
-    await supabase.from('clients').upsert(clients);
+  await supabase.from('clients').upsert(clients);
 };
+
 export const syncTransactionsBatch = async (transactions: Transaction[]) => {
-    await supabase.from('transactions').upsert(transactions);
+  await supabase.from('transactions').upsert(transactions);
 };
+
 export const syncQuote = async (quote: Quote) => {
   await supabase.from('quotes').upsert({
     id: quote.id,
@@ -205,6 +210,7 @@ export const syncQuote = async (quote: Quote) => {
     );
   }
 };
+
 export const deleteFromSupabase = async (table: string, id: string) => {
-    await supabase.from(table).delete().eq('id', id);
+  await supabase.from(table).delete().eq('id', id);
 };

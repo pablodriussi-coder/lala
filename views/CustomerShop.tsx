@@ -56,7 +56,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
   }, [selectedCategoryId, productsWithPrices]);
 
   const latestShowroomEntries = useMemo(() => {
-    return [...(data.showroomEntries || [])].reverse().slice(0, 3);
+    return [...(data.showroomEntries || [])].slice(0, 3);
   }, [data.showroomEntries]);
 
   const addToCart = () => {
@@ -92,16 +92,16 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
   return (
     <div className="min-h-screen bg-brand-white pb-32 animate-fadeIn font-['Quicksand'] relative overflow-x-hidden">
       
-      {/* Redes Sociales Barra Derecha Fija */}
-      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-[100] flex flex-col gap-2">
-        {data.settings.instagramUrl && data.settings.instagramUrl.trim() !== '' && (
-           <a href={data.settings.instagramUrl} target="_blank" rel="noreferrer" className="bg-gradient-to-tr from-[#f09433] via-[#e6683c] via-[#dc2743] via-[#cc2366] to-[#bc1888] text-white p-4 rounded-l-3xl shadow-2xl hover:-translate-x-3 transition-all flex items-center gap-2 group">
+      {/* Redes Sociales Barra Derecha Fija - PRIORIDAD ALTA */}
+      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-[999] flex flex-col gap-2">
+        {data.settings.instagramUrl && data.settings.instagramUrl.length > 3 && (
+           <a href={data.settings.instagramUrl.startsWith('http') ? data.settings.instagramUrl : `https://${data.settings.instagramUrl}`} target="_blank" rel="noreferrer" className="bg-gradient-to-tr from-[#f09433] via-[#e6683c] via-[#dc2743] via-[#cc2366] to-[#bc1888] text-white p-4 rounded-l-3xl shadow-2xl hover:-translate-x-3 transition-all flex items-center gap-2 group">
              <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.332 3.608 1.308.975.975 1.245 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.332 2.633-1.308 3.608-.975.975-2.242 1.245-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.332-3.608-1.308-.975-.975-1.245-2.242-1.308-3.608-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.062-1.366.332-2.633 1.308-3.608.975-.975 2.242-1.245 3.608-1.308 1.266-.058-1.646-.07 4.85-.07zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948s.014 3.667.072 4.947c.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072s3.667-.014 4.947-.072c4.358-.2 6.78-2.618 6.98-6.98.058-1.281.072-1.689.072-4.948s-.014-3.667-.072-4.947c-.2-4.358-2.618-6.78-6.98-6.98-1.281-.058-1.689-.072-4.948-.072zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.162 6.162 6.162 6.162-2.759 6.162-6.162-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4s1.791-4 4-4 4 1.791 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
              <span className="hidden group-hover:block text-[10px] font-black uppercase tracking-widest ml-2">Instagram</span>
            </a>
         )}
-        {data.settings.facebookUrl && data.settings.facebookUrl.trim() !== '' && (
-           <a href={data.settings.facebookUrl} target="_blank" rel="noreferrer" className="bg-[#1877F2] text-white p-4 rounded-l-3xl shadow-2xl hover:-translate-x-3 transition-all flex items-center gap-2 group">
+        {data.settings.facebookUrl && data.settings.facebookUrl.length > 3 && (
+           <a href={data.settings.facebookUrl.startsWith('http') ? data.settings.facebookUrl : `https://${data.settings.facebookUrl}`} target="_blank" rel="noreferrer" className="bg-[#1877F2] text-white p-4 rounded-l-3xl shadow-2xl hover:-translate-x-3 transition-all flex items-center gap-2 group">
              <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
              <span className="hidden group-hover:block text-[10px] font-black uppercase tracking-widest ml-2">Facebook</span>
            </a>
@@ -266,7 +266,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                   
                   <div className="flex-1 overflow-y-auto mb-10 pr-2 custom-scrollbar">
                       <label className="block text-[11px] font-black text-brand-dark uppercase tracking-[0.3em] mb-6 text-center">Selecciona un estampado:</label>
-                      {selectingProduct.designOptions?.length ? (
+                      {selectingProduct.designOptions && selectingProduct.designOptions.length > 0 ? (
                           <div className="grid grid-cols-3 gap-5">
                               {selectingProduct.designOptions.map(design => (
                                   <button key={design.id} onClick={() => setSelectedDesignId(design.id)} className={`p-2 rounded-3xl border-2 transition-all group ${selectedDesignId === design.id ? 'border-brand-sage bg-brand-white shadow-xl scale-105' : 'border-brand-beige hover:border-brand-greige hover:scale-105'}`}>
@@ -308,7 +308,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                      return (
                        <div key={idx} className="flex gap-6 items-center animate-fadeIn bg-brand-white/30 p-4 rounded-3xl border border-brand-white hover:border-brand-beige transition-all group">
                          <div className="w-20 h-20 bg-brand-white rounded-2xl overflow-hidden flex-shrink-0 border border-brand-beige shadow-sm">
-                           <img src={item.selectedDesign?.image || p?.images?.[0]} className="w-full h-full object-cover" alt="item" />
+                           <img src={item.selectedDesign?.image || (p?.images && p.images[0])} className="w-full h-full object-cover" alt="item" />
                          </div>
                          <div className="flex-1 min-w-0">
                             <p className="text-sm font-black text-brand-dark truncate uppercase tracking-tight">{p?.name}</p>
@@ -324,9 +324,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                    })}
                  </div>
                  
-                 {/* BOTÓN HACER PEDIDO Y TOTAL ESTIMADO (POSICIÓN SOLICITADA) */}
                  <div className="pt-10 space-y-8">
-                    {/* Botón Estilo WhatsApp */}
                     <button 
                       onClick={sendWhatsAppOrder} 
                       disabled={cart.length === 0} 
@@ -336,7 +334,6 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                       HACER PEDIDO
                     </button>
 
-                    {/* Total Estimado Inmediatamente Debajo */}
                     <div className="border-t-2 border-brand-white pt-6 flex justify-between items-end">
                       <span className="text-[12px] font-black text-brand-dark/50 uppercase tracking-[0.4em]">Total estimado</span>
                       <span className="text-4xl font-black text-brand-sage">${cartTotal.toFixed(0)}</span>
