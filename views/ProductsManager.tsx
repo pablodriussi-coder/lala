@@ -27,6 +27,46 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
 
   const [formData, setFormData] = useState<Partial<Product>>(initialFormState);
 
+  // Función para comprimir imágenes antes de subir
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1024;
+          const MAX_HEIGHT = 1024;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Exportar como JPEG comprimido
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(dataUrl);
+        };
+      };
+    });
+  };
+
   const handleGenerateAI = async () => {
     if (!formData.name) return alert("Por favor, ingresa el nombre del producto.");
     
@@ -53,22 +93,19 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    // Fix: explicitly typing 'file' as File in the forEach loop to ensure it satisfies Blob parameters
-    Array.from(files).forEach((file: File) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = event.target?.result as string;
-        setFormData(prev => ({
-          ...prev,
-          images: [...(prev.images || []), base64]
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
+    const compressedImages = await Promise.all(
+      Array.from(files).map(file => compressImage(file))
+    );
+
+    setFormData(prev => ({
+      ...prev,
+      images: [...(prev.images || []), ...compressedImages]
+    }));
+
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
@@ -121,7 +158,6 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
         alert("Error procesando el archivo Excel.");
       }
     };
-    // Fix: added cast to Blob/File to satisfy readAsBinaryString requirement
     reader.readAsBinaryString(file as Blob);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };

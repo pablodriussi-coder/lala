@@ -37,7 +37,7 @@ export const fetchAllData = async (): Promise<AppData> => {
     const adaptedProducts = (products || []).map(p => ({
       ...p,
       baseLaborCost: Number(p.base_labor_cost),
-      images: p.images || [], // Cargar imágenes
+      images: Array.isArray(p.images) ? p.images : [], 
       materials: (p.product_materials || []).map((pm: any) => ({
         materialId: pm.material_id,
         quantity: Number(pm.quantity),
@@ -105,14 +105,25 @@ export const syncTransactionsBatch = async (transactions: Transaction[]) => {
 };
 
 export const syncProduct = async (product: Product) => {
-  const { error: pError } = await supabase.from('products').upsert({
+  const productData = {
     id: product.id,
     name: product.name,
     description: product.description,
     base_labor_cost: product.baseLaborCost,
-    images: product.images || [] // Guardar imágenes
-  });
-  if (pError) return console.error('Error syncing product:', pError.message);
+    images: product.images || []
+  };
+
+  const { error: pError } = await supabase.from('products').upsert(productData);
+  
+  if (pError) {
+    console.error('Error al sincronizar producto:', pError);
+    if (pError.message.includes('images')) {
+        alert("⚠️ Error: La columna 'images' no existe en Supabase. Debes ejecutar el comando SQL: ALTER TABLE products ADD COLUMN images text[] DEFAULT '{}';");
+    } else {
+        alert("Error al guardar producto: " + pError.message);
+    }
+    return;
+  }
 
   await supabase.from('product_materials').delete().eq('product_id', product.id);
   if (product.materials.length > 0) {
