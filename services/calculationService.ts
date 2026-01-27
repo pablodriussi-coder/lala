@@ -5,24 +5,30 @@ export const calculateRequirementCost = (req: ProductMaterialRequirement, materi
   const material = materials.find(m => m.id === req.materialId);
   if (!material) return 0;
 
+  const cost = Number(material.costPerUnit) || 0;
+  const quantity = Number(req.quantity) || 0;
+
   if (material.unit === MaterialUnit.METERS && req.widthCm && req.heightCm && material.widthCm) {
-    const areaNeeded = req.widthCm * req.heightCm;
-    const areaOneMeter = material.widthCm * 100;
+    const areaNeeded = Number(req.widthCm) * Number(req.heightCm);
+    const areaOneMeter = Number(material.widthCm) * 100;
     const usagePercentage = areaNeeded / areaOneMeter;
-    return material.costPerUnit * usagePercentage;
+    return cost * usagePercentage;
   }
 
-  return material.costPerUnit * req.quantity;
+  return cost * quantity;
 };
 
 export const calculateProductCost = (product: Product, materials: Material[]) => {
-  const materialsCost = product.materials.reduce((acc, req) => {
+  const materialsCost = (product.materials || []).reduce((acc, req) => {
     return acc + calculateRequirementCost(req, materials);
   }, 0);
-  return materialsCost + (Number(product.baseLaborCost) || 0);
+  const labor = Number(product.baseLaborCost) || 0;
+  return materialsCost + labor;
 };
 
 export const calculateFinalPrice = (product: Product, materials: Material[], marginPercent: number) => {
   const cost = calculateProductCost(product, materials);
-  return cost * (1 + marginPercent / 100);
+  const margin = Number(marginPercent) || 0;
+  const price = cost * (1 + margin / 100);
+  return isNaN(price) ? 0 : price;
 };

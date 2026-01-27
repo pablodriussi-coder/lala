@@ -20,6 +20,12 @@ export interface ProductMaterialRequirement {
   heightCm?: number; 
 }
 
+export interface DesignOption {
+  id: string;
+  name: string;
+  image?: string; // Base64 de la tela
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -27,6 +33,7 @@ export interface Product {
   materials: ProductMaterialRequirement[];
   baseLaborCost: number;
   images?: string[]; 
+  designOptions?: DesignOption[]; // Nuevas opciones de telas
 }
 
 export interface Client {
@@ -41,6 +48,7 @@ export interface QuoteItem {
   productId: string;
   quantity: number;
   customPrice?: number;
+  selectedDesign?: string; // Para presupuestos manuales
 }
 
 export interface Quote {
@@ -77,7 +85,7 @@ export interface AppData {
   settings: {
     brandName: string;
     defaultMargin: number;
-    whatsappNumber: string; // Nuevo campo
+    whatsappNumber: string;
     initialFunds?: number;
   };
 }
