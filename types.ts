@@ -86,7 +86,7 @@ export interface Transaction {
 export interface AppData {
   materials: Material[];
   products: Product[];
-  categories: Category[]; // Nueva sección de datos
+  categories: Category[];
   clients: Client[];
   quotes: Quote[];
   transactions: Transaction[];
@@ -95,5 +95,8 @@ export interface AppData {
     defaultMargin: number;
     whatsappNumber: string;
     initialFunds?: number;
+    shopBannerImage?: string; 
+    shopBannerText?: string;  
+    shopLogo?: string; // Nueva: Imagen del logo PNG
   };
 }

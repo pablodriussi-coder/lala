@@ -14,7 +14,7 @@ import QuickCalculator from './views/QuickCalculator';
 import CustomerShop from './views/CustomerShop';
 import CategoriesManager from './views/CategoriesManager';
 
-const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ children, isLoading }) => {
+const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean, settings: AppData['settings'] }> = ({ children, isLoading, settings }) => {
   const location = useLocation();
   const isShopView = location.pathname === '/shop';
 
@@ -35,12 +35,19 @@ const Layout: React.FC<{ children: React.ReactNode, isLoading: boolean }> = ({ c
     <div className="flex h-screen bg-brand-white overflow-hidden">
       <aside className="w-64 bg-white shadow-xl z-10 border-r border-brand-beige hidden md:flex flex-col">
         <div className="p-8">
-          <div className="flex flex-col">
-            <h1 className="text-3xl font-bold text-brand-dark leading-none tracking-tight flex items-baseline">
-              Lala<span className="text-brand-red ml-1 text-2xl">★</span>
-            </h1>
-            <p className="text-[11px] text-brand-greige font-semibold tracking-[0.2em] uppercase mt-1">accesorios</p>
-          </div>
+          {settings.shopLogo ? (
+            <div className="flex flex-col items-center">
+              <img src={settings.shopLogo} className="h-16 w-auto mb-2" alt="Logo" />
+              <p className="text-[9px] text-brand-greige font-black uppercase tracking-[0.2em]">{settings.brandName}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              <h1 className="text-3xl font-bold text-brand-dark leading-none tracking-tight flex items-baseline">
+                Lala<span className="text-brand-red ml-1 text-2xl">★</span>
+              </h1>
+              <p className="text-[11px] text-brand-greige font-semibold tracking-[0.2em] uppercase mt-1">accesorios</p>
+            </div>
+          )}
         </div>
         <nav className="mt-4 flex-1">
           {navItems.map((item) => (
@@ -77,7 +84,6 @@ export default function App() {
 
   useEffect(() => {
     fetchAllData().then(res => {
-      // Inyectar categorías por defecto si está vacío
       if (res.categories.length === 0) {
         const defaults = ["Baberos", "Bandanas", "Babitas", "Bodies", "Cartucheras", "Neceser", "Mochilas", "Canastos", "Para la cuna", "Apego", "Mordedores", "Mantas"];
         res.categories = defaults.map(name => ({ id: crypto.randomUUID(), name }));
@@ -100,7 +106,7 @@ export default function App() {
     for (const p of newProducts) await syncProduct(p);
   };
 
-  // ... (otros handlers similares)
+  const safeData = data || { materials: [], products: [], categories: [], clients: [], quotes: [], transactions: [], settings: { brandName: 'Lala', defaultMargin: 400, whatsappNumber: '5491100000000' } };
 
   if (!data && loading) return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-brand-white">
@@ -109,16 +115,13 @@ export default function App() {
       </div>
   );
 
-  const safeData = data || { materials: [], products: [], categories: [], clients: [], quotes: [], transactions: [], settings: { brandName: 'Lala', defaultMargin: 400, whatsappNumber: '5491100000000' } };
-
   return (
     <HashRouter>
-      <Layout isLoading={loading}>
+      <Layout isLoading={loading} settings={safeData.settings}>
         <Routes>
           <Route path="/" element={<Dashboard data={safeData} onUpdateSettings={async s => { setData({...safeData, settings: s}); await syncSettings(s); }} />} />
           <Route path="/categories" element={<CategoriesManager data={safeData} updateData={up => handleUpdateCategories(up(safeData).categories)} />} />
           <Route path="/products" element={<ProductsManager data={safeData} updateData={up => handleUpdateProducts(up(safeData).products)} />} />
-          {/* ... otras rutas existentes ... */}
           <Route path="/materials" element={<MaterialsManager data={safeData} updateData={up => { const next = up(safeData); setData(next); syncMaterialsBatch(next.materials); }} />} />
           <Route path="/quotes" element={<QuotesManager data={safeData} updateData={up => { const next = up(safeData); setData(next); next.quotes.forEach(q => syncQuote(q)); }} />} />
           <Route path="/clients" element={<ClientsManager data={safeData} updateData={up => { const next = up(safeData); setData(next); syncClientsBatch(next.clients); }} />} />

@@ -3,6 +3,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { AppData, Product, ProductMaterialRequirement, DesignOption } from '../types';
 import { ICONS } from '../constants';
 import { calculateFinalPrice } from '../services/calculationService';
+import * as XLSX from 'xlsx';
 
 interface ProductsManagerProps {
   data: AppData;
@@ -13,13 +14,13 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const designInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const initialFormState: Product = {
     id: '',
     name: '',
     description: '',
-    categoryId: '', // Inicializar categoría
+    categoryId: '',
     materials: [],
     baseLaborCost: 0,
     images: [],
@@ -103,6 +104,64 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
     setFormData(initialFormState);
   };
 
+  const exportToExcel = () => {
+    const exportData = data.products.map(p => {
+      const category = data.categories.find(c => c.id === p.categoryId);
+      return {
+        ID: p.id,
+        Nombre: p.name,
+        Descripción: p.description,
+        ID_Categoría: p.categoryId || '',
+        Nombre_Categoría: category?.name || 'Sin Categoría',
+        Costo_Mano_Obra: p.baseLaborCost
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Productos");
+    XLSX.writeFile(wb, "Lala_Catalogo.xlsx");
+  };
+
+  const importFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const bstr = event.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const importedRows = XLSX.utils.sheet_to_json(ws) as any[];
+
+        const updatedProducts: Product[] = importedRows.map(row => {
+          const existing = data.products.find(p => p.id === row.ID);
+          return {
+            id: row.ID || crypto.randomUUID(),
+            name: row.Nombre || 'Sin nombre',
+            description: row.Descripción || '',
+            categoryId: row.ID_Categoría || '',
+            baseLaborCost: Number(row.Costo_Mano_Obra) || 0,
+            // Preservamos materiales e imágenes si ya existían, ya que el Excel no los maneja bien
+            materials: existing?.materials || [],
+            images: existing?.images || [],
+            designOptions: existing?.designOptions || []
+          };
+        });
+
+        if (confirm(`Se han procesado ${updatedProducts.length} productos. ¿Deseas actualizar el catálogo actual?`)) {
+          updateData(prev => ({ ...prev, products: updatedProducts }));
+        }
+      } catch (err) {
+        alert("Error procesando el archivo Excel. Verifica el formato.");
+      }
+    };
+    reader.readAsBinaryString(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
@@ -110,10 +169,19 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Catálogo</h2>
           <p className="text-brand-greige font-medium">Gestión de productos por categoría</p>
         </div>
-        <button onClick={() => openModal()} className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg transition-all font-bold group">
-          <ICONS.Add />
-          <span>Nuevo Producto</span>
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={importFromExcel} className="hidden" />
+          <button onClick={() => fileInputRef.current?.click()} className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm flex items-center gap-2">
+            <span>📥 Importar Excel</span>
+          </button>
+          <button onClick={exportToExcel} className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm flex items-center gap-2">
+            <span>📤 Exportar Excel</span>
+          </button>
+          <button onClick={() => openModal()} className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg transition-all font-bold group">
+            <ICONS.Add />
+            <span>Nuevo Producto</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -173,7 +241,7 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                 </div>
                 {/* ... resto del formulario ... */}
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-4 pt-8">
                 <button type="button" onClick={closeModal} className="flex-1 py-4 text-brand-greige font-bold">Cancelar</button>
                 <button type="submit" className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold">Guardar Producto</button>
               </div>

@@ -12,7 +12,8 @@ const INITIAL_DATA: AppData = {
   settings: {
     brandName: 'Lala accesorios',
     defaultMargin: 400,
-    whatsappNumber: '5491100000000'
+    whatsappNumber: '5491100000000',
+    shopBannerText: 'Confecciones artesanales hechas con amor para tu bebé'
   }
 };
 
@@ -80,13 +81,28 @@ export const fetchAllData = async (): Promise<AppData> => {
       settings: settingsData ? {
         brandName: settingsData.brand_name || INITIAL_DATA.settings.brandName,
         defaultMargin: Number(settingsData.default_margin || INITIAL_DATA.settings.defaultMargin),
-        whatsappNumber: settingsData.whatsapp_number || INITIAL_DATA.settings.whatsappNumber
+        whatsappNumber: settingsData.whatsapp_number || INITIAL_DATA.settings.whatsappNumber,
+        shopBannerImage: settingsData.shop_banner_image,
+        shopBannerText: settingsData.shop_banner_text || INITIAL_DATA.settings.shopBannerText,
+        shopLogo: settingsData.shop_logo
       } : INITIAL_DATA.settings
     };
   } catch (error) {
     console.error('Error crítico en fetchAllData:', error);
     return INITIAL_DATA;
   }
+};
+
+export const syncSettings = async (settings: AppData['settings']) => {
+  await supabase.from('settings').upsert({
+    id: 'default',
+    brand_name: settings.brandName,
+    default_margin: settings.defaultMargin,
+    whatsapp_number: settings.whatsappNumber,
+    shop_banner_image: settings.shopBannerImage,
+    shop_banner_text: settings.shopBannerText,
+    shop_logo: settings.shopLogo
+  });
 };
 
 export const syncProduct = async (product: Product) => {
@@ -99,12 +115,7 @@ export const syncProduct = async (product: Product) => {
     images: product.images || [],
     design_options: product.designOptions || []
   });
-
-  if (error) {
-    console.error("Error al guardar producto:", error.message);
-    return;
-  }
-
+  if (error) console.error("Error al guardar producto:", error.message);
   await supabase.from('product_materials').delete().eq('product_id', product.id);
   if (product.materials.length > 0) {
     await supabase.from('product_materials').insert(
@@ -118,7 +129,6 @@ export const syncProduct = async (product: Product) => {
     );
   }
 };
-
 export const syncCategory = async (category: Category) => {
   await supabase.from('categories').upsert({
     id: category.id,
@@ -126,16 +136,6 @@ export const syncCategory = async (category: Category) => {
     image: category.image
   });
 };
-
-export const syncSettings = async (settings: AppData['settings']) => {
-  await supabase.from('settings').upsert({
-    id: 'default',
-    brand_name: settings.brandName,
-    default_margin: settings.defaultMargin,
-    whatsapp_number: settings.whatsappNumber
-  });
-};
-
 export const syncMaterialsBatch = async (materials: Material[]) => {
     await supabase.from('materials').upsert(materials.map(m => ({
         id: m.id,
@@ -145,15 +145,12 @@ export const syncMaterialsBatch = async (materials: Material[]) => {
         width_cm: m.widthCm
     })));
 };
-
 export const syncClientsBatch = async (clients: Client[]) => {
     await supabase.from('clients').upsert(clients);
 };
-
 export const syncTransactionsBatch = async (transactions: Transaction[]) => {
     await supabase.from('transactions').upsert(transactions);
 };
-
 export const syncQuote = async (quote: Quote) => {
   await supabase.from('quotes').upsert({
     id: quote.id,
@@ -166,7 +163,6 @@ export const syncQuote = async (quote: Quote) => {
     discount_reason: quote.discountReason,
     created_at: new Date(quote.createdAt).toISOString()
   });
-
   await supabase.from('quote_items').delete().eq('quote_id', quote.id);
   if (quote.items.length > 0) {
     await supabase.from('quote_items').insert(
@@ -179,7 +175,6 @@ export const syncQuote = async (quote: Quote) => {
     );
   }
 };
-
 export const deleteFromSupabase = async (table: string, id: string) => {
     await supabase.from(table).delete().eq('id', id);
 };
