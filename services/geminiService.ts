@@ -17,18 +17,18 @@ export const generateMarketingText = async (quote: Quote, products: Product[], m
     const prompt = `Actúa como una experta en marketing para un emprendimiento de costura de accesorios para bebés llamado "Lala accesorios". 
     Genera un mensaje corto, cálido y profesional para enviarle a una cliente con su presupuesto. 
     El presupuesto incluye: ${productNames}. 
-    Resalta el valor del trabajo artesanal, la calidad de los materiales y el amor puesto en cada puntada. 
-    Usa un tono dulce pero ejecutivo. No uses precios, solo describe la experiencia de compra.`;
+    Resalta el valor del trabajo artesanal y la calidad de los materiales. 
+    Usa un tono dulce y profesional. No uses precios.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: prompt,
     });
 
-    return response.text?.trim() || "Gracias por elegirnos para acompañar los primeros pasos de tu bebé.";
+    return response.text || "Gracias por elegirnos para acompañar los primeros pasos de tu bebé.";
   } catch (error) {
     console.error("Gemini Marketing Error:", error);
-    return "Gracias por elegirnos para acompañar los primeros pasos de tu bebé. Cada pieza es confeccionada con dedicación y los mejores materiales.";
+    return "Gracias por elegirnos para acompañar los primeros pasos de tu bebé. Cada pieza es confeccionada con dedicación.";
   }
 };
 
@@ -45,31 +45,29 @@ export const generateDescriptionFromMaterials = async (
 
     const materialList = requirements.map(req => {
       const mat = availableMaterials.find(m => m.id === req.materialId);
-      return mat ? mat.name : 'materiales de calidad';
+      return mat ? mat.name : 'materiales seleccionados';
     }).join(', ');
 
-    const prompt = `Como experta en costura creativa y puericultura para el emprendimiento "Lala accesorios", escribe una descripción dulce y vendedora para un producto llamado: "${productName}".
-    Este producto está compuesto por: ${materialList}.
+    const prompt = `Escribe una descripción dulce y vendedora para un accesorio de bebé llamado "${productName}".
+    Materiales: ${materialList}.
     
     Instrucciones:
-    1. Explica por qué estos materiales son ideales para bebés (suavidad, seguridad, durabilidad).
-    2. Resalta el detalle artesanal y el cuidado en la confección.
-    3. Usa un tono que emocione a una mamá o papá (protector, dulce, premium).
-    4. Máximo 280 caracteres. No menciones precios.`;
+    - Resalta la suavidad y seguridad para el bebé.
+    - Menciona que es un trabajo 100% artesanal de "Lala accesorios".
+    - Tono: dulce y protector.
+    - Máximo 250 caracteres. No menciones precios.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: prompt,
     });
 
-    if (!response.text) {
-      throw new Error("La IA no devolvió contenido.");
-    }
+    const text = response.text;
+    if (!text) throw new Error("La IA no devolvió texto.");
 
-    return response.text.trim();
+    return text.trim();
   } catch (error) {
-    console.error("Gemini Description Error:", error);
-    // Lanzamos el error para que el componente UI lo capture y muestre la alerta
-    throw error;
+    console.error("Gemini Assistant Error:", error);
+    throw error; // Re-lanzamos para que la UI capture el error de conexión
   }
 };
