@@ -108,14 +108,6 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
     setSelectedQuoteId(null);
   };
 
-  const handleGenerateMarketing = async (quote: Quote) => {
-    setSelectedQuoteId(quote.id);
-    setIsGeneratingMarketing(true);
-    const text = await generateMarketingText(quote, data.products, data.materials);
-    setMarketingText(text);
-    setIsGeneratingMarketing(false);
-  };
-
   const addItem = () => {
     if (data.products.length === 0) return alert('Crea productos primero.');
     setFormData(prev => ({
@@ -140,25 +132,42 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
     window.print();
   };
 
-  const BrandLogo = () => (
-    <div className="flex flex-col select-none">
-      <div className="flex items-start gap-1">
-        <div className="flex flex-col">
-          <h1 className="text-[85px] font-black text-brand-dark leading-[0.7] tracking-[-0.04em]">
-            Lala
-          </h1>
-          <span className="text-2xl text-brand-dark font-medium tracking-[0.28em] mt-5 ml-1 opacity-90 uppercase">
-            accesorios
-          </span>
+  const BrandLogo = () => {
+    // Si hay un logo cargado en los ajustes, lo usamos.
+    if (data.settings.shopLogo) {
+      return (
+        <div className="flex flex-col items-start select-none">
+          <img 
+            src={data.settings.shopLogo} 
+            className="h-28 w-auto object-contain mb-2" 
+            alt={data.settings.brandName} 
+          />
+          <p className="text-[10px] text-brand-greige font-black uppercase tracking-[0.2em]">{data.settings.brandName}</p>
         </div>
-        <div className="pt-2 ml-1">
-          <svg width="50" height="50" viewBox="0 0 24 24" className="text-brand-red fill-current">
-            <path d="M12 2c.6 0 1.2.3 1.5.8l2.2 4.1c.2.4.6.7 1.1.7l4.6.6c1 .1 1.4 1.3.7 2l-3.3 3.1c-.3.3-.5.8-.4 1.2l.8 4.4c.2 1-.9 1.7-1.7 1.2L13.4 18c-.4-.2-.9-.2-1.3 0l-4.1 2.1c-.8.5-1.9-.2-1.7-1.2l.8-4.4c.1-.4-.1-.9-.4-1.2l-3.3-3.1c-.7-.7-.3-1.9.7-2l4.6-.6c.5 0 .9-.3 1.1-.7l2.2-4.1c.3-.5.9-.8 1.5-.8z" />
-          </svg>
+      );
+    }
+
+    // Si no, usamos el logo de respaldo
+    return (
+      <div className="flex flex-col select-none">
+        <div className="flex items-start gap-1">
+          <div className="flex flex-col">
+            <h1 className="text-[85px] font-black text-brand-dark leading-[0.7] tracking-[-0.04em]">
+              Lala
+            </h1>
+            <span className="text-2xl text-brand-dark font-medium tracking-[0.28em] mt-5 ml-1 opacity-90 uppercase">
+              accesorios
+            </span>
+          </div>
+          <div className="pt-2 ml-1">
+            <svg width="50" height="50" viewBox="0 0 24 24" className="text-brand-red fill-current">
+              <path d="M12 2c.6 0 1.2.3 1.5.8l2.2 4.1c.2.4.6.7 1.1.7l4.6.6c1 .1 1.4 1.3.7 2l-3.3 3.1c-.3.3-.5.8-.4 1.2l.8 4.4c.2 1-.9 1.7-1.7 1.2L13.4 18c-.4-.2-.9-.2-1.3 0l-4.1 2.1c-.8.5-1.9-.2-1.7-1.2l.8-4.4c.1-.4-.1-.9-.4-1.2l-3.3-3.1c-.7-.7-.3-1.9.7-2l4.6-.6c.5 0 .9-.3 1.1-.7l2.2-4.1c.3-.5.9-.8 1.5-.8z" />
+            </svg>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-8 animate-fadeIn pb-12">
