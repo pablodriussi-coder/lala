@@ -1,5 +1,5 @@
 
-import { AppData, Material, Product, Client, Quote, Transaction, Category } from './types';
+import { AppData, Material, Product, Client, Quote, Transaction, Category, ShowroomEntry } from './types';
 import { supabase } from './supabaseClient';
 
 const INITIAL_DATA: AppData = {
@@ -9,10 +9,13 @@ const INITIAL_DATA: AppData = {
   clients: [],
   quotes: [],
   transactions: [],
+  showroomEntries: [],
   settings: {
     brandName: 'Lala accesorios',
     defaultMargin: 400,
     whatsappNumber: '5491100000000',
+    instagramUrl: '',
+    facebookUrl: '',
     shopBannerText: 'Confecciones artesanales hechas con amor para tu bebé'
   }
 };
@@ -26,6 +29,7 @@ export const fetchAllData = async (): Promise<AppData> => {
       { data: clients },
       { data: quotes },
       { data: transactions },
+      { data: showroom },
       { data: settingsData }
     ] = await Promise.all([
       supabase.from('materials').select('*'),
@@ -34,6 +38,7 @@ export const fetchAllData = async (): Promise<AppData> => {
       supabase.from('clients').select('*'),
       supabase.from('quotes').select('*, quote_items(*)'),
       supabase.from('transactions').select('*'),
+      supabase.from('showroom_entries').select('*'),
       supabase.from('settings').select('*').eq('id', 'default').single()
     ]);
 
@@ -60,6 +65,10 @@ export const fetchAllData = async (): Promise<AppData> => {
       products: adaptedProducts,
       categories: categories || [],
       clients: clients || [],
+      showroomEntries: (showroom || []).map(s => ({
+        ...s,
+        date: new Date(s.date).getTime()
+      })),
       quotes: (quotes || []).map((q: any) => ({
         ...q,
         clientId: q.client_id,
@@ -82,6 +91,8 @@ export const fetchAllData = async (): Promise<AppData> => {
         brandName: settingsData.brand_name || INITIAL_DATA.settings.brandName,
         defaultMargin: Number(settingsData.default_margin || INITIAL_DATA.settings.defaultMargin),
         whatsappNumber: settingsData.whatsapp_number || INITIAL_DATA.settings.whatsappNumber,
+        instagramUrl: settingsData.instagram_url,
+        facebookUrl: settingsData.facebook_url,
         shopBannerImage: settingsData.shop_banner_image,
         shopBannerText: settingsData.shop_banner_text || INITIAL_DATA.settings.shopBannerText,
         shopLogo: settingsData.shop_logo
@@ -99,21 +110,39 @@ export const syncSettings = async (settings: AppData['settings']) => {
     brand_name: settings.brandName,
     default_margin: settings.defaultMargin,
     whatsapp_number: settings.whatsappNumber,
+    instagram_url: settings.instagramUrl,
+    facebook_url: settings.facebookUrl,
     shop_banner_image: settings.shopBannerImage,
     shop_banner_text: settings.shopBannerText,
     shop_logo: settings.shopLogo
   });
 };
 
+export const syncShowroomEntry = async (entry: ShowroomEntry) => {
+  await supabase.from('showroom_entries').upsert({
+    id: entry.id,
+    title: entry.title,
+    content: entry.content,
+    type: entry.type,
+    image: entry.image,
+    date: new Date(entry.date).toISOString()
+  });
+};
+
+export const deleteShowroomEntry = async (id: string) => {
+  await supabase.from('showroom_entries').delete().eq('id', id);
+};
+
+// ... resto de funciones existentes ...
 export const syncProduct = async (product: Product) => {
   const { error } = await supabase.from('products').upsert({
     id: product.id,
     name: product.name,
     description: product.description,
     category_id: product.categoryId,
-    base_labor_cost: Number(product.baseLaborCost) || 0,
+    base_labor_cost: Number(product.base_labor_cost) || 0,
     images: product.images || [],
-    design_options: product.designOptions || []
+    design_options: product.design_options || []
   });
   if (error) console.error("Error al guardar producto:", error.message);
   await supabase.from('product_materials').delete().eq('product_id', product.id);
@@ -170,6 +199,7 @@ export const syncQuote = async (quote: Quote) => {
         quote_id: quote.id,
         product_id: item.productId,
         quantity: item.quantity,
+        // Fixed: Property 'selected_design' does not exist on type 'QuoteItem'. Use 'selectedDesign' from QuoteItem interface.
         selected_design: item.selectedDesign
       }))
     );

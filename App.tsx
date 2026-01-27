@@ -14,16 +14,17 @@ import ClientsManager from './views/ClientsManager';
 import AccountingManager from './views/AccountingManager';
 import QuickCalculator from './views/QuickCalculator';
 import CategoriesManager from './views/CategoriesManager';
+import ShowroomManager from './views/ShowroomManager';
 
-// Vista de la Tienda
+// Vistas Públicas
 import CustomerShop from './views/CustomerShop';
+import ShowroomView from './views/ShowroomView';
 
 const AppContent: React.FC = () => {
   const [data, setData] = useState<AppData | null>(null);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
 
-  // Cargamos los datos de Supabase al iniciar
   useEffect(() => {
     fetchAllData().then(res => {
       setData(res);
@@ -45,7 +46,6 @@ const AppContent: React.FC = () => {
 
   const isAdminPath = location.pathname.startsWith('/admin');
 
-  // Funciones de actualización
   const handleUpdate = (updater: (prev: AppData) => AppData) => {
     setData(prev => {
       if (!prev) return null;
@@ -64,6 +64,7 @@ const AppContent: React.FC = () => {
     { path: '/admin/accounting', label: 'Contabilidad', icon: ICONS.Accounting },
     { path: '/admin/calculator', label: 'Calculadora', icon: ICONS.Calculator },
     { path: '/admin/quotes', label: 'Presupuestos', icon: ICONS.Quotes },
+    { path: '/admin/showroom', label: 'Showroom & Blog', icon: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20l-7-7 7-7M5 20l7-7-7-7" /></svg> },
     { path: '/admin/categories', label: 'Categorías', icon: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg> },
     { path: '/admin/products', label: 'Catálogo', icon: ICONS.Products },
     { path: '/admin/materials', label: 'Materiales', icon: ICONS.Materials },
@@ -72,7 +73,6 @@ const AppContent: React.FC = () => {
 
   return (
     <div className={`flex h-screen bg-brand-white overflow-hidden ${!isAdminPath ? 'flex-col' : ''}`}>
-      {/* Sidebar: Solo visible en rutas /admin */}
       {isAdminPath && (
         <aside className="w-64 bg-white shadow-xl z-10 border-r border-brand-beige hidden md:flex flex-col">
           <div className="p-6 border-b border-brand-white">
@@ -100,25 +100,22 @@ const AppContent: React.FC = () => {
         </aside>
       )}
 
-      {/* Contenido Principal */}
       <main className="flex-1 overflow-y-auto">
         <div className={isAdminPath ? "p-6 md:p-10 max-w-7xl mx-auto" : ""}>
           <Routes>
-            {/* TIENDA (Página de Inicio) */}
             <Route path="/" element={<CustomerShop data={data} />} />
+            <Route path="/showroom" element={<ShowroomView data={data} />} />
 
-            {/* RUTAS DEL MANAGER */}
             <Route path="/admin" element={<Dashboard data={data} onUpdateSettings={updateSettings} />} />
             <Route path="/admin/categories" element={<CategoriesManager data={data} updateData={handleUpdate} />} />
             <Route path="/admin/products" element={<ProductsManager data={data} updateData={handleUpdate} />} />
+            <Route path="/admin/showroom" element={<ShowroomManager data={data} updateData={handleUpdate} />} />
             <Route path="/admin/materials" element={<MaterialsManager data={data} updateData={(up) => { const n = up(data); handleUpdate(up); syncMaterialsBatch(n.materials); }} />} />
             <Route path="/admin/quotes" element={<QuotesManager data={data} updateData={(up) => { const n = up(data); handleUpdate(up); n.quotes.forEach(q => syncQuote(q)); }} />} />
             <Route path="/admin/clients" element={<ClientsManager data={data} updateData={(up) => { const n = up(data); handleUpdate(up); syncClientsBatch(n.clients); }} />} />
             <Route path="/admin/accounting" element={<AccountingManager data={data} updateData={(up) => { const n = up(data); handleUpdate(up); syncTransactionsBatch(n.transactions); }} />} />
             <Route path="/admin/calculator" element={<QuickCalculator />} />
 
-            {/* Redirecciones de seguridad */}
-            <Route path="/shop" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

@@ -23,20 +23,20 @@ export interface ProductMaterialRequirement {
 export interface DesignOption {
   id: string;
   name: string;
-  image?: string; // Base64 de la tela
+  image?: string; 
 }
 
 export interface Category {
   id: string;
   name: string;
-  image?: string; // Imagen representativa para la tienda
+  image?: string; 
 }
 
 export interface Product {
   id: string;
   name: string;
   description: string;
-  categoryId?: string; // Relación con la categoría
+  categoryId?: string;
   materials: ProductMaterialRequirement[];
   baseLaborCost: number;
   images?: string[]; 
@@ -83,6 +83,17 @@ export interface Transaction {
   description: string;
 }
 
+export type ShowroomEntryType = 'clase' | 'exposicion' | 'tip' | 'evento';
+
+export interface ShowroomEntry {
+  id: string;
+  title: string;
+  content: string;
+  type: ShowroomEntryType;
+  image?: string;
+  date: number;
+}
+
 export interface AppData {
   materials: Material[];
   products: Product[];
@@ -90,13 +101,16 @@ export interface AppData {
   clients: Client[];
   quotes: Quote[];
   transactions: Transaction[];
+  showroomEntries: ShowroomEntry[];
   settings: {
     brandName: string;
     defaultMargin: number;
     whatsappNumber: string;
+    instagramUrl?: string;
+    facebookUrl?: string;
     initialFunds?: number;
     shopBannerImage?: string; 
     shopBannerText?: string;  
-    shopLogo?: string; // Nueva: Imagen del logo PNG
+    shopLogo?: string;
   };
 }

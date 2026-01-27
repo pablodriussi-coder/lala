@@ -52,7 +52,6 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        // Usamos PNG para el logo para mantener transparencia
         const format = field === 'shopLogo' ? 'image/png' : 'image/jpeg';
         const quality = field === 'shopLogo' ? undefined : 0.6;
         setTempSettings({ ...tempSettings, [field]: canvas.toDataURL(format, quality) });
@@ -86,7 +85,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
         {[
           { label: 'Capital Disponible', value: `$${financialTotals.balance.toLocaleString()}`, icon: '💰', color: 'text-brand-dark' },
           { label: 'Presupuestos', value: totalQuotes, icon: '📋', color: 'text-brand-sage' },
-          { label: 'Materiales', value: data.materials.length, icon: '🧵', color: 'text-brand-greige' },
+          { label: 'Showroom Entries', value: data.showroomEntries.length, icon: '✨', color: 'text-brand-greige' },
           { label: 'Clientes', value: data.clients.length, icon: '🤝', color: 'text-brand-red' },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-8 rounded-[2rem] shadow-sm border border-brand-beige flex items-center gap-5 hover:shadow-lg transition-all">
@@ -155,6 +154,22 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
               <div>
                 <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Nombre del Emprendimiento</label>
                 <input type="text" value={tempSettings.brandName} onChange={e => setTempSettings({...tempSettings, brandName: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">WhatsApp</label>
+                    <input type="text" value={tempSettings.whatsappNumber} onChange={e => setTempSettings({...tempSettings, whatsappNumber: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Instagram (URL)</label>
+                    <input type="text" value={tempSettings.instagramUrl} onChange={e => setTempSettings({...tempSettings, instagramUrl: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-xs" />
+                  </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Facebook (URL)</label>
+                <input type="text" value={tempSettings.facebookUrl} onChange={e => setTempSettings({...tempSettings, facebookUrl: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-xs" />
               </div>
               
               <div className="pt-4 border-t border-brand-white">
