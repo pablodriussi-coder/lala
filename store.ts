@@ -30,7 +30,7 @@ export const fetchAllData = async (): Promise<AppData> => {
       { data: quotes },
       { data: transactions },
       { data: showroom },
-      { data: settingsData }
+      { data: settingsResponse } // Cambiado para manejar error de .single()
     ] = await Promise.all([
       supabase.from('materials').select('*'),
       supabase.from('products').select('*, product_materials(*)'),
@@ -39,8 +39,10 @@ export const fetchAllData = async (): Promise<AppData> => {
       supabase.from('quotes').select('*, quote_items(*)'),
       supabase.from('transactions').select('*'),
       supabase.from('showroom_entries').select('*'),
-      supabase.from('settings').select('*').eq('id', 'default').single()
+      supabase.from('settings').select('*').eq('id', 'default') // Quitamos .single() para evitar crash
     ]);
+
+    const settingsData = settingsResponse && settingsResponse.length > 0 ? settingsResponse[0] : null;
 
     const adaptedProducts = (products || []).map(p => ({
       ...p,
@@ -91,8 +93,8 @@ export const fetchAllData = async (): Promise<AppData> => {
         brandName: settingsData.brand_name || INITIAL_DATA.settings.brandName,
         defaultMargin: Number(settingsData.default_margin || INITIAL_DATA.settings.defaultMargin),
         whatsappNumber: settingsData.whatsapp_number || INITIAL_DATA.settings.whatsappNumber,
-        instagramUrl: settingsData.instagram_url,
-        facebookUrl: settingsData.facebook_url,
+        instagramUrl: settingsData.instagram_url || '',
+        facebookUrl: settingsData.facebook_url || '',
         shopBannerImage: settingsData.shop_banner_image,
         shopBannerText: settingsData.shop_banner_text || INITIAL_DATA.settings.shopBannerText,
         shopLogo: settingsData.shop_logo
@@ -133,16 +135,15 @@ export const deleteShowroomEntry = async (id: string) => {
   await supabase.from('showroom_entries').delete().eq('id', id);
 };
 
-// ... resto de funciones existentes ...
 export const syncProduct = async (product: Product) => {
   const { error } = await supabase.from('products').upsert({
     id: product.id,
     name: product.name,
     description: product.description,
     category_id: product.categoryId,
-    base_labor_cost: Number(product.base_labor_cost) || 0,
+    base_labor_cost: Number(product.baseLaborCost) || 0,
     images: product.images || [],
-    design_options: product.design_options || []
+    design_options: product.designOptions || []
   });
   if (error) console.error("Error al guardar producto:", error.message);
   await supabase.from('product_materials').delete().eq('product_id', product.id);
@@ -199,7 +200,6 @@ export const syncQuote = async (quote: Quote) => {
         quote_id: quote.id,
         product_id: item.productId,
         quantity: item.quantity,
-        // Fixed: Property 'selected_design' does not exist on type 'QuoteItem'. Use 'selectedDesign' from QuoteItem interface.
         selected_design: item.selectedDesign
       }))
     );
