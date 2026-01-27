@@ -7,6 +7,7 @@ import { Product, Material, Quote, ProductMaterialRequirement } from "../types";
  */
 export const generateMarketingText = async (quote: Quote, products: Product[], materials: Material[]): Promise<string> => {
   try {
+    // Creamos la instancia justo antes de usarla para asegurar que use la clave más reciente
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const productNames = quote.items.map(item => {
@@ -22,13 +23,13 @@ export const generateMarketingText = async (quote: Quote, products: Product[], m
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: prompt,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 
     return response.text || "Gracias por elegirnos para acompañar los primeros pasos de tu bebé.";
   } catch (error) {
     console.error("Gemini Marketing Error:", error);
-    return "Gracias por elegirnos para acompañar los primeros pasos de tu bebé. Cada pieza es confeccionada con dedicación.";
+    throw error;
   }
 };
 
@@ -49,17 +50,17 @@ export const generateDescriptionFromMaterials = async (
     }).join(', ');
 
     const prompt = `Escribe una descripción dulce y vendedora para un accesorio de bebé llamado "${productName}".
-    Materiales: ${materialList}.
+    Materiales utilizados: ${materialList}.
     
     Instrucciones:
     - Resalta la suavidad y seguridad para el bebé.
     - Menciona que es un trabajo 100% artesanal de "Lala accesorios".
-    - Tono: dulce y protector.
+    - Tono: dulce, protector y premium.
     - Máximo 250 caracteres. No menciones precios.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: prompt,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 
     const text = response.text;
@@ -68,6 +69,6 @@ export const generateDescriptionFromMaterials = async (
     return text.trim();
   } catch (error) {
     console.error("Gemini Assistant Error:", error);
-    throw error; // Re-lanzamos para que la UI capture el error de conexión
+    throw error;
   }
 };
