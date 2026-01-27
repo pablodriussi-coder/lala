@@ -1,9 +1,11 @@
-
 import React, { useState, useRef } from 'react';
 import { AppData, Product, ProductMaterialRequirement, MaterialUnit } from '../types';
 import { ICONS } from '../constants';
 import { generateDescriptionFromMaterials } from '../services/geminiService';
 import * as XLSX from 'xlsx';
+
+// The Window augmentation was causing a "identical modifiers" error because aistudio is often pre-configured.
+// Using type assertion (window as any).aistudio is safer and avoids property modifier conflicts.
 
 interface ProductsManagerProps {
   data: AppData;
@@ -36,11 +38,66 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
         data.materials
       );
       setFormData(prev => ({ ...prev, description: desc }));
-    } catch (e) {
-      alert("No se pudo conectar con el asistente de IA.");
+    } catch (e: any) {
+      console.error(e);
+      // If the request fails, prompt the user to select an API key via openSelectKey().
+      if (confirm("Hubo un problema de conexión con la IA. ¿Deseas configurar tu clave de API para solucionar el acceso?")) {
+        try {
+          // Access pre-configured aistudio using type assertion to avoid declaration conflicts.
+          await (window as any).aistudio.openSelectKey();
+          alert("Clave configurada. Por favor, intenta generar la descripción nuevamente.");
+        } catch (keyError) {
+          alert("No se pudo abrir el configurador de claves.");
+        }
+      }
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const exportToExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(data.products.map(p => ({
+      ID: p.id,
+      Nombre: p.name,
+      Descripcion: p.description,
+      CostoManoObra: p.baseLaborCost,
+      MaterialesJSON: JSON.stringify(p.materials) // Guardamos la estructura para que sea importable
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Catalogo_Productos");
+    XLSX.writeFile(wb, "Lala_Catalogo.xlsx");
+  };
+
+  const importFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const bstr = event.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const importedData = XLSX.utils.sheet_to_json(ws) as any[];
+
+        const updatedProducts: Product[] = importedData.map(row => ({
+          id: row.ID || crypto.randomUUID(),
+          name: row.Nombre || 'Sin nombre',
+          description: row.Descripcion || '',
+          baseLaborCost: Number(row.CostoManoObra) || 0,
+          materials: row.MaterialesJSON ? JSON.parse(row.MaterialesJSON) : []
+        }));
+
+        if (confirm(`Se han detectado ${updatedProducts.length} productos. ¿Deseas sobreescribir el catálogo actual?`)) {
+          updateData(prev => ({ ...prev, products: updatedProducts }));
+        }
+      } catch (err) {
+        alert("Error procesando el archivo Excel. Verifica que el formato sea el correcto (puedes exportar uno primero para ver el ejemplo).");
+      }
+    };
+    reader.readAsBinaryString(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleAddMaterial = () => {
@@ -147,20 +204,6 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
     setIsGenerating(false);
   };
 
-  const exportToExcel = () => {
-    const mainData = data.products.map(p => ({
-      ID: p.id,
-      Nombre: p.name,
-      Descripcion: p.description,
-      CostoManoObra: p.baseLaborCost
-    }));
-
-    const wb = XLSX.utils.book_new();
-    const ws1 = XLSX.utils.json_to_sheet(mainData);
-    XLSX.utils.book_append_sheet(wb, ws1, "Productos");
-    XLSX.writeFile(wb, "Lala_Catalogo.xlsx");
-  };
-
   return (
     <div className="space-y-8 animate-fadeIn">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
@@ -169,6 +212,19 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
           <p className="text-brand-greige font-medium">Define tus productos y sus costos base</p>
         </div>
         <div className="flex flex-wrap gap-3">
+          <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={importFromExcel} className="hidden" />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm"
+          >
+            📥 Importar Catálogo
+          </button>
+          <button 
+            onClick={exportToExcel}
+            className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm"
+          >
+            📤 Exportar Catálogo
+          </button>
           <button 
             onClick={() => setIsModalOpen(true)}
             className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group"
