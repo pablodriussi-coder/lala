@@ -175,5 +175,5 @@ const INITIAL_APP_DATA: AppData = {
   clients: [],
   quotes: [],
   transactions: [],
-  settings: { brandName: 'Lala', defaultMargin: 50 }
+  settings: { brandName: 'Lala', defaultMargin: 400 }
 };

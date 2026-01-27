@@ -10,7 +10,7 @@ const INITIAL_DATA: AppData = {
   transactions: [],
   settings: {
     brandName: 'Lala accesorios',
-    defaultMargin: 50
+    defaultMargin: 400
   }
 };
 
