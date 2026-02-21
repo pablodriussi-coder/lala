@@ -48,6 +48,7 @@ export const fetchAllData = async (): Promise<AppData> => {
       ...p,
       categoryId: p.category_id,
       baseLaborCost: Number(p.base_labor_cost || 0),
+      customPrice: p.custom_price ? Number(p.custom_price) : undefined,
       images: Array.isArray(p.images) ? p.images : [], 
       designOptions: Array.isArray(p.design_options) ? p.design_options : [],
       materials: (p.product_materials || []).map((pm: any) => ({
@@ -142,6 +143,7 @@ export const syncProduct = async (product: Product) => {
     description: product.description,
     category_id: product.categoryId,
     base_labor_cost: Number(product.baseLaborCost) || 0,
+    custom_price: product.customPrice,
     images: product.images || [],
     design_options: product.designOptions || []
   });

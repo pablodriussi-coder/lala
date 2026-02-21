@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import { AppData, Product, ProductMaterialRequirement, MaterialUnit, Material, DesignOption } from '../types';
 import { ICONS } from '../constants';
 import { calculateFinalPrice, calculateProductCost } from '../services/calculationService';
-import { syncProduct } from '../store';
+import { syncProduct, deleteFromSupabase } from '../store';
 
 interface ProductsManagerProps {
   data: AppData;
@@ -28,6 +28,16 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
   };
 
   const [formData, setFormData] = useState<Product>(initialFormState);
+
+  const handleDelete = async (id: string) => {
+    if (confirm('¿Estás segura de eliminar este producto permanentemente?')) {
+      updateData(prev => ({
+        ...prev,
+        products: prev.products.filter(p => p.id !== id)
+      }));
+      await deleteFromSupabase('products', id);
+    }
+  };
 
   const compressImage = (file: File, quality = 0.5): Promise<string> => {
     return new Promise((resolve) => {
@@ -84,6 +94,7 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
       ...formData,
       id: editingId || crypto.randomUUID(),
       baseLaborCost: Number(formData.baseLaborCost) || 0,
+      customPrice: formData.customPrice ? Number(formData.customPrice) : undefined,
       materials: formData.materials || [],
       designOptions: Array.isArray(formData.designOptions) ? formData.designOptions : [],
       images: Array.isArray(formData.images) ? formData.images : []
@@ -153,7 +164,8 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {data.products.map(product => {
-          const price = calculateFinalPrice(product, data.materials, data.settings.defaultMargin);
+          const suggestedPrice = calculateFinalPrice(product, data.materials, data.settings.defaultMargin);
+          const finalPrice = product.customPrice || suggestedPrice;
           return (
             <div key={product.id} className="bg-white rounded-[2rem] shadow-sm border border-brand-beige overflow-hidden flex flex-col group hover:shadow-xl transition-all">
               <div className="h-48 bg-brand-white relative overflow-hidden flex items-center justify-center">
@@ -161,8 +173,15 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                   <img src={product.images[0]} className="w-full h-full object-cover group-hover:scale-105 transition-transform" alt={product.name} />
                 ) : <span className="text-5xl opacity-10">🧺</span>}
                 <div className="absolute top-4 left-4 bg-brand-sage text-white px-3 py-1 rounded-full text-[10px] font-black shadow-lg">
-                  ${price.toFixed(0)}
+                  ${finalPrice.toFixed(0)}
+                  {product.customPrice && <span className="ml-1 opacity-70"> (Manual)</span>}
                 </div>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
+                  className="absolute top-4 right-4 bg-brand-red/80 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  ✕
+                </button>
               </div>
               <div className="p-6 flex-1 flex flex-col">
                 <h3 className="text-lg font-bold text-brand-dark mb-1">{product.name}</h3>
@@ -198,6 +217,17 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                     <div>
                         <label className="block text-[10px] font-black text-brand-dark/60 uppercase tracking-widest mb-2">Nombre</label>
                         <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-5 py-3 rounded-xl bg-brand-white border border-brand-beige outline-none font-bold text-brand-dark" placeholder="Ej: Babero Bandana" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-brand-dark/60 uppercase tracking-widest mb-2">Precio Final Manual (Opcional)</label>
+                        <input 
+                          type="number" 
+                          value={formData.customPrice || ''} 
+                          onChange={e => setFormData({ ...formData, customPrice: e.target.value ? Number(e.target.value) : undefined })} 
+                          className="w-full px-5 py-3 rounded-xl bg-brand-white border border-brand-beige outline-none font-bold text-brand-sage" 
+                          placeholder="Si queda vacío, usa el sugerido" 
+                        />
+                        <p className="text-[9px] text-brand-greige mt-1 italic">Si ingresas un valor aquí, se ignorará el cálculo automático de materiales + margen.</p>
                     </div>
                   </div>
 

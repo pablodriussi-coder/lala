@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { AppData, Category } from '../types';
 import { ICONS } from '../constants';
-import { syncCategory } from '../store';
+import { syncCategory, deleteFromSupabase } from '../store';
 
 interface CategoriesManagerProps {
   data: AppData;
@@ -66,6 +66,16 @@ const CategoriesManager: React.FC<CategoriesManagerProps> = ({ data, updateData 
     closeModal();
   };
 
+  const handleDelete = async (id: string) => {
+    if (confirm('¿Estás segura de eliminar esta categoría? Los productos asociados no se borrarán pero quedarán sin categoría.')) {
+      updateData(prev => ({
+        ...prev,
+        categories: prev.categories.filter(c => c.id !== id)
+      }));
+      await deleteFromSupabase('categories', id);
+    }
+  };
+
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
@@ -93,7 +103,10 @@ const CategoriesManager: React.FC<CategoriesManagerProps> = ({ data, updateData 
               ) : <div className="w-full h-full flex items-center justify-center text-4xl grayscale opacity-10">📂</div>}
             </div>
             <h3 className="text-xs font-black text-center text-brand-dark uppercase tracking-widest truncate">{cat.name}</h3>
-            <button onClick={() => { setEditingId(cat.id); setFormData(cat); setIsModalOpen(true); }} className="absolute inset-0 bg-brand-sage/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-[2rem] flex items-center justify-center text-white font-bold text-xs uppercase">Editar</button>
+            <div className="absolute inset-0 bg-brand-sage/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-[2rem] flex flex-col items-center justify-center gap-2">
+              <button onClick={() => { setEditingId(cat.id); setFormData(cat); setIsModalOpen(true); }} className="text-white font-bold text-xs uppercase hover:underline">Editar</button>
+              <button onClick={() => handleDelete(cat.id)} className="text-brand-red font-bold text-[10px] uppercase hover:underline">Eliminar</button>
+            </div>
           </div>
         ))}
       </div>

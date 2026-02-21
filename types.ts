@@ -39,6 +39,7 @@ export interface Product {
   categoryId?: string;
   materials: ProductMaterialRequirement[];
   baseLaborCost: number;
+  customPrice?: number;
   images?: string[]; 
   designOptions?: DesignOption[]; 
 }

@@ -46,7 +46,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
     if (!data.products) return [];
     return data.products.map(p => ({
       ...p,
-      price: calculateFinalPrice(p, data.materials || [], data.settings?.defaultMargin || 0)
+      price: p.customPrice || calculateFinalPrice(p, data.materials || [], data.settings?.defaultMargin || 0)
     }));
   }, [data.products, data.materials, data.settings?.defaultMargin]);
 
