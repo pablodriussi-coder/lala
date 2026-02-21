@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { AppData, Quote, QuoteItem, ProductMaterialRequirement, MaterialUnit } from '../types';
 import { ICONS } from '../constants';
 import { generateMarketingText } from '../services/geminiService';
+import { syncQuote } from '../store';
 import * as XLSX from 'xlsx';
 
 interface QuotesManagerProps {
@@ -57,7 +58,7 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
     }, 0);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.clientId || (formData.items || []).length === 0) return alert('Selecciona cliente y productos.');
 
@@ -85,6 +86,8 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
         ? prev.quotes.map(q => q.id === editingId ? quoteData : q)
         : [...prev.quotes, quoteData]
     }));
+
+    await syncQuote(quoteData);
 
     closeModal();
   };

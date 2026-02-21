@@ -146,9 +146,11 @@ export const syncProduct = async (product: Product) => {
     design_options: product.designOptions || []
   });
   if (error) console.error("Error al guardar producto:", error.message);
-  await supabase.from('product_materials').delete().eq('product_id', product.id);
+  const { error: deleteError } = await supabase.from('product_materials').delete().eq('product_id', product.id);
+  if (deleteError) console.error("Error al limpiar materiales del producto:", deleteError.message);
+  
   if (product.materials.length > 0) {
-    await supabase.from('product_materials').insert(
+    const { error: insertError } = await supabase.from('product_materials').insert(
       product.materials.map(m => ({
         product_id: product.id,
         material_id: m.materialId,
@@ -157,25 +159,28 @@ export const syncProduct = async (product: Product) => {
         height_cm: m.heightCm
       }))
     );
+    if (insertError) console.error("Error al insertar materiales del producto:", insertError.message);
   }
 };
 
 export const syncCategory = async (category: Category) => {
-  await supabase.from('categories').upsert({
+  const { error } = await supabase.from('categories').upsert({
     id: category.id,
     name: category.name,
     image: category.image
   });
+  if (error) console.error("Error al guardar categoría:", error.message);
 };
 
 export const syncMaterialsBatch = async (materials: Material[]) => {
-  await supabase.from('materials').upsert(materials.map(m => ({
+  const { error } = await supabase.from('materials').upsert(materials.map(m => ({
     id: m.id,
     name: m.name,
     unit: m.unit,
     cost_per_unit: m.costPerUnit,
     width_cm: m.widthCm
   })));
+  if (error) console.error("Error al guardar materiales:", error.message);
 };
 
 export const syncClientsBatch = async (clients: Client[]) => {

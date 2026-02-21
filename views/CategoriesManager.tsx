@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { AppData, Category } from '../types';
 import { ICONS } from '../constants';
+import { syncCategory } from '../store';
 
 interface CategoriesManagerProps {
   data: AppData;
@@ -43,19 +44,25 @@ const CategoriesManager: React.FC<CategoriesManagerProps> = ({ data, updateData 
     setFormData({ ...formData, image: base64 });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name) return;
     const newCategory: Category = {
       id: editingId || crypto.randomUUID(),
       name: formData.name,
       image: formData.image
     };
+    
+    // Actualizar localmente
     updateData(prev => ({
       ...prev,
       categories: editingId 
         ? prev.categories.map(c => c.id === editingId ? newCategory : c)
         : [...prev.categories, newCategory]
     }));
+
+    // Sincronizar con Supabase
+    await syncCategory(newCategory);
+    
     closeModal();
   };
 

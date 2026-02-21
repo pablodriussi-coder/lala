@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { AppData, Client } from '../types';
 import { ICONS } from '../constants';
+import { syncClientsBatch } from '../store';
 import * as XLSX from 'xlsx';
 
 interface ClientsManagerProps {
@@ -32,12 +33,18 @@ const ClientsManager: React.FC<ClientsManagerProps> = ({ data, updateData }) => 
       address: formData.address || ''
     };
 
-    updateData(prev => ({
-      ...prev,
-      clients: editingId 
+    updateData(prev => {
+      const updatedClients = editingId 
         ? prev.clients.map(c => c.id === editingId ? newClient : c)
-        : [...prev.clients, newClient]
-    }));
+        : [...prev.clients, newClient];
+      
+      syncClientsBatch(updatedClients);
+      
+      return {
+        ...prev,
+        clients: updatedClients
+      };
+    });
 
     closeModal();
   };
@@ -83,6 +90,7 @@ const ClientsManager: React.FC<ClientsManagerProps> = ({ data, updateData }) => 
 
       if (confirm(`Se han detectado ${updatedClients.length} clientes. ¿Deseas sobreescribir el directorio actual?`)) {
         updateData(prev => ({ ...prev, clients: updatedClients }));
+        syncClientsBatch(updatedClients);
       }
     };
     reader.readAsBinaryString(file);
@@ -179,7 +187,15 @@ const ClientsManager: React.FC<ClientsManagerProps> = ({ data, updateData }) => 
                     </button>
                     <span className="text-brand-beige">|</span>
                     <button 
-                        onClick={() => { if(confirm('¿Segura?')) updateData(prev => ({...prev, clients: prev.clients.filter(c => c.id !== client.id)})); }}
+                        onClick={() => { 
+                          if(confirm('¿Segura?')) {
+                            updateData(prev => {
+                              const updatedClients = prev.clients.filter(c => c.id !== client.id);
+                              syncClientsBatch(updatedClients);
+                              return { ...prev, clients: updatedClients };
+                            });
+                          }
+                        }}
                         className="text-brand-red opacity-50 hover:opacity-100 font-bold text-sm"
                     >
                         Borrar

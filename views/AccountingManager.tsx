@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { AppData, Transaction, TransactionType, TransactionCategory } from '../types';
 import { ICONS } from '../constants';
+import { syncTransactionsBatch } from '../store';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import * as XLSX from 'xlsx';
 
@@ -75,12 +76,18 @@ const AccountingManager: React.FC<AccountingManagerProps> = ({ data, updateData 
       description: formData.description || ''
     };
 
-    updateData(prev => ({
-      ...prev,
-      transactions: editingId 
+    updateData(prev => {
+      const updatedTransactions = editingId 
         ? prev.transactions.map(t => t.id === editingId ? transaction : t)
-        : [...prev.transactions, transaction]
-    }));
+        : [...prev.transactions, transaction];
+      
+      syncTransactionsBatch(updatedTransactions);
+      
+      return {
+        ...prev,
+        transactions: updatedTransactions
+      };
+    });
 
     closeModal();
   };
@@ -127,6 +134,7 @@ const AccountingManager: React.FC<AccountingManagerProps> = ({ data, updateData 
 
       if (confirm(`Se han detectado ${transactions.length} registros. ¿Deseas sobreescribir el historial actual?`)) {
         updateData(prev => ({ ...prev, transactions }));
+        syncTransactionsBatch(transactions);
       }
     };
     reader.readAsBinaryString(file);

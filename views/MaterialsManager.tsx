@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { AppData, Material, MaterialUnit } from '../types';
 import { ICONS } from '../constants';
+import { syncMaterialsBatch } from '../store';
 import * as XLSX from 'xlsx';
 
 interface MaterialsManagerProps {
@@ -20,7 +21,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
     widthCm: 150
   });
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const newMaterial: Material = {
       id: editingId || crypto.randomUUID(),
@@ -30,12 +31,20 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
       widthCm: formData.unit === MaterialUnit.METERS ? (Number(formData.widthCm) || 150) : undefined
     };
 
-    updateData(prev => ({
-      ...prev,
-      materials: editingId 
+    // Actualizar localmente
+    updateData(prev => {
+      const updatedMaterials = editingId 
         ? prev.materials.map(m => m.id === editingId ? newMaterial : m)
-        : [...prev.materials, newMaterial]
-    }));
+        : [...prev.materials, newMaterial];
+      
+      // Sincronizar con Supabase (usamos el lote completo para materiales ya que es pequeño)
+      syncMaterialsBatch(updatedMaterials);
+      
+      return {
+        ...prev,
+        materials: updatedMaterials
+      };
+    });
 
     closeModal();
   };
@@ -52,12 +61,16 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
     setIsModalOpen(true);
   };
 
-  const deleteMaterial = (id: string) => {
+  const deleteMaterial = async (id: string) => {
     if (confirm('¿Estás segura de eliminar este material?')) {
-        updateData(prev => ({
-            ...prev,
-            materials: prev.materials.filter(m => m.id !== id)
-        }));
+        updateData(prev => {
+            const updatedMaterials = prev.materials.filter(m => m.id !== id);
+            syncMaterialsBatch(updatedMaterials);
+            return {
+                ...prev,
+                materials: updatedMaterials
+            };
+        });
     }
   };
 
@@ -103,6 +116,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
 
         if (confirm(`Se han detectado ${updatedMaterials.length} materiales. ¿Deseas sobreescribir la base de datos actual?`)) {
           updateData(prev => ({ ...prev, materials: updatedMaterials }));
+          syncMaterialsBatch(updatedMaterials);
         }
       } catch (err) {
         alert("Error procesando el archivo Excel. Verifica el formato.");

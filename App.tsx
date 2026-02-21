@@ -83,7 +83,7 @@ const AppContent: React.FC = () => {
       {/* Botón flotante para el Admin (Solo aparece en la tienda pública) */}
       {!isAdminPath && (
         <Link 
-          to="/entrar" 
+          to="/admin" 
           className="fixed top-4 left-4 z-[1000] bg-white/80 backdrop-blur-md p-3 rounded-full shadow-lg border border-brand-beige hover:bg-brand-sage hover:text-white transition-all group"
           title="Ir al Panel de Administración"
         >
@@ -159,16 +159,12 @@ const AppContent: React.FC = () => {
 
             <Route path="/admin" element={<Dashboard data={data} onUpdateSettings={updateSettings} />} />
             <Route path="/admin/categories" element={<CategoriesManager data={data} updateData={handleUpdate} />} />
-            <Route path="/admin/products" element={<ProductsManager data={data} updateData={(up) => { 
-              const n = up(data); 
-              handleUpdate(up); 
-              n.products.forEach(p => syncProduct(p)); 
-            }} />} />
+            <Route path="/admin/products" element={<ProductsManager data={data} updateData={handleUpdate} />} />
             <Route path="/admin/showroom" element={<ShowroomManager data={data} updateData={handleUpdate} />} />
-            <Route path="/admin/materials" element={<MaterialsManager data={data} updateData={(up) => { const n = up(data); handleUpdate(up); syncMaterialsBatch(n.materials); }} />} />
-            <Route path="/admin/quotes" element={<QuotesManager data={data} updateData={(up) => { const n = up(data); handleUpdate(up); n.quotes.forEach(q => syncQuote(q)); }} />} />
-            <Route path="/admin/clients" element={<ClientsManager data={data} updateData={(up) => { const n = up(data); handleUpdate(up); syncClientsBatch(n.clients); }} />} />
-            <Route path="/admin/accounting" element={<AccountingManager data={data} updateData={(up) => { const n = up(data); handleUpdate(up); syncTransactionsBatch(n.transactions); }} />} />
+            <Route path="/admin/materials" element={<MaterialsManager data={data} updateData={handleUpdate} />} />
+            <Route path="/admin/quotes" element={<QuotesManager data={data} updateData={handleUpdate} />} />
+            <Route path="/admin/clients" element={<ClientsManager data={data} updateData={handleUpdate} />} />
+            <Route path="/admin/accounting" element={<AccountingManager data={data} updateData={handleUpdate} />} />
             <Route path="/admin/calculator" element={<QuickCalculator />} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
