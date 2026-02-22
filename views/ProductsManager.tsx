@@ -396,8 +396,12 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
             <div className="p-12 md:p-20 flex-1 flex flex-col print:p-0 print:block">
                <div className="flex justify-between items-start mb-16 print:mb-10">
                   <div className="flex flex-col">
-                    <h1 className="text-4xl font-black text-brand-dark uppercase tracking-tight mb-2">{data.settings.brandName}</h1>
-                    <p className="text-brand-greige font-bold text-sm uppercase tracking-widest">Lista de Precios y Costos</p>
+                    {data.settings.shopLogo ? (
+                      <img src={data.settings.shopLogo} className="h-20 w-auto object-contain mb-4 self-start" alt="Logo" />
+                    ) : (
+                      <h1 className="text-4xl font-black text-brand-dark uppercase tracking-tight mb-2">{data.settings.brandName}</h1>
+                    )}
+                    <p className="text-brand-greige font-bold text-sm uppercase tracking-widest">Lista de Precios</p>
                   </div>
                   <div className="text-right">
                     <p className="text-brand-greige font-bold text-sm">{new Date().toLocaleDateString()}</p>
@@ -408,13 +412,11 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                  <thead>
                     <tr className="bg-brand-white/50 border-b-2 border-brand-dark print:bg-transparent">
                        <th className="px-4 py-4 text-[10px] font-black text-brand-dark uppercase tracking-widest">Producto</th>
-                       <th className="px-4 py-4 text-[10px] font-black text-brand-dark uppercase tracking-widest text-right">Costo</th>
                        <th className="px-4 py-4 text-[10px] font-black text-brand-dark uppercase tracking-widest text-right">Precio Final</th>
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-brand-white">
                     {data.products.map((product) => {
-                      const cost = calculateProductCost(product, data.materials);
                       const suggestedPrice = calculateFinalPrice(product, data.materials, data.settings.defaultMargin);
                       const finalPrice = product.customPrice || suggestedPrice;
                       return (
@@ -427,7 +429,6 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                               </p>
                             )}
                           </td>
-                          <td className="px-4 py-5 text-right font-medium text-brand-greige">${cost.toFixed(2)}</td>
                           <td className="px-4 py-5 text-right font-black text-brand-dark">${finalPrice.toFixed(2)}</td>
                         </tr>
                       );
@@ -436,7 +437,11 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                </table>
 
                <div className="mt-10 pt-10 border-t border-brand-white text-center print:mt-10 print:pb-10">
-                  <p className="text-[10px] text-brand-greige font-bold uppercase tracking-widest italic">Documento generado internamente para control de stock y precios.</p>
+                  <p className="text-[10px] text-brand-greige font-bold uppercase tracking-widest italic mb-2">Documento generado internamente para control de stock y precios.</p>
+                  <div className="flex justify-center gap-6 text-[10px] font-black text-brand-dark uppercase tracking-widest">
+                    <span>📞 {data.settings.whatsappNumber}</span>
+                    <span>📸 @laura.willink</span>
+                  </div>
                </div>
             </div>
           </div>
