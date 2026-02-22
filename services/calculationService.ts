@@ -26,9 +26,9 @@ export const calculateProductCost = (product: Product, materials: Material[]) =>
   return materialsCost + labor;
 };
 
-export const calculateFinalPrice = (product: Product, materials: Material[], marginPercent: number) => {
+export const calculateFinalPrice = (product: Product, materials: Material[], defaultMarginPercent: number) => {
   const cost = calculateProductCost(product, materials);
-  const margin = Number(marginPercent) || 0;
+  const margin = Number(product.profitMargin !== undefined ? product.profitMargin : defaultMarginPercent) || 0;
   const price = cost * (1 + margin / 100);
   return isNaN(price) ? 0 : price;
 };

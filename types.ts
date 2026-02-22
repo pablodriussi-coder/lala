@@ -40,6 +40,7 @@ export interface Product {
   materials: ProductMaterialRequirement[];
   baseLaborCost: number;
   customPrice?: number;
+  profitMargin?: number;
   images?: string[]; 
   designOptions?: DesignOption[]; 
 }

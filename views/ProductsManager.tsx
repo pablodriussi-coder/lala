@@ -12,6 +12,7 @@ interface ProductsManagerProps {
 
 const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPrintViewOpen, setIsPrintViewOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const designInputRef = useRef<HTMLInputElement>(null);
@@ -95,6 +96,7 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
       id: editingId || crypto.randomUUID(),
       baseLaborCost: Number(formData.baseLaborCost) || 0,
       customPrice: formData.customPrice ? Number(formData.customPrice) : undefined,
+      profitMargin: formData.profitMargin !== undefined ? Number(formData.profitMargin) : undefined,
       materials: formData.materials || [],
       designOptions: Array.isArray(formData.designOptions) ? formData.designOptions : [],
       images: Array.isArray(formData.images) ? formData.images : []
@@ -156,10 +158,15 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Catálogo</h2>
           <p className="text-brand-dark/60 font-medium">Gestión de productos por categoría</p>
         </div>
-        <button onClick={() => openModal()} className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg transition-all font-bold group">
-          <ICONS.Add />
-          <span>Nuevo Producto</span>
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => setIsPrintViewOpen(true)} className="bg-brand-white border border-brand-beige hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl flex items-center gap-2 transition-all font-bold group">
+            <span>📄 Lista PDF</span>
+          </button>
+          <button onClick={() => openModal()} className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg transition-all font-bold group">
+            <ICONS.Add />
+            <span>Nuevo Producto</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -174,7 +181,11 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                 ) : <span className="text-5xl opacity-10">🧺</span>}
                 <div className="absolute top-4 left-4 bg-brand-sage text-white px-3 py-1 rounded-full text-[10px] font-black shadow-lg">
                   ${finalPrice.toFixed(0)}
-                  {product.customPrice && <span className="ml-1 opacity-70"> (Manual)</span>}
+                  {product.customPrice ? (
+                    <span className="ml-1 opacity-70"> (Manual)</span>
+                  ) : product.profitMargin ? (
+                    <span className="ml-1 opacity-70"> ({product.profitMargin}%)</span>
+                  ) : null}
                 </div>
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
@@ -228,6 +239,38 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                           placeholder="Si queda vacío, usa el sugerido" 
                         />
                         <p className="text-[9px] text-brand-greige mt-1 italic">Si ingresas un valor aquí, se ignorará el cálculo automático de materiales + margen.</p>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-brand-dark/60 uppercase tracking-widest mb-2">Margen de Ganancia (%)</label>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {[200, 300, 400].map(m => (
+                                <button
+                                    key={m}
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, profitMargin: m })}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${formData.profitMargin === m ? 'bg-brand-sage text-white shadow-md' : 'bg-brand-white border border-brand-beige text-brand-greige hover:border-brand-sage'}`}
+                                >
+                                    {m}%
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, profitMargin: undefined })}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${formData.profitMargin === undefined ? 'bg-brand-dark text-white shadow-md' : 'bg-brand-white border border-brand-beige text-brand-greige hover:border-brand-dark'}`}
+                            >
+                                Default ({data.settings.defaultMargin}%)
+                            </button>
+                        </div>
+                        <div className="relative">
+                            <input 
+                                type="number" 
+                                value={formData.profitMargin || ''} 
+                                onChange={e => setFormData({ ...formData, profitMargin: e.target.value ? Number(e.target.value) : undefined })} 
+                                className="w-full px-5 py-3 rounded-xl bg-brand-white border border-brand-beige outline-none font-bold text-brand-dark" 
+                                placeholder="Manual %" 
+                            />
+                            <span className="absolute right-5 top-1/2 -translate-y-1/2 text-brand-greige font-bold">%</span>
+                        </div>
                     </div>
                   </div>
 
@@ -337,6 +380,65 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Vista de Impresión / PDF */}
+      {isPrintViewOpen && (
+        <div className="fixed inset-0 bg-brand-dark/50 backdrop-blur-xl flex items-start justify-center z-[100] p-4 md:p-10 overflow-y-auto print:bg-white print:p-0 print:block">
+          <div className="bg-white w-full max-w-[800px] shadow-2xl min-h-[1000px] flex flex-col print:shadow-none print:max-w-none print:w-full">
+            <div className="bg-brand-white p-6 flex justify-between items-center border-b border-brand-beige print:hidden sticky top-0 z-10">
+              <button onClick={() => setIsPrintViewOpen(false)} className="text-brand-greige hover:text-brand-dark flex items-center gap-2">✕ Cerrar</button>
+              <button onClick={() => window.print()} className="bg-brand-dark text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-sage">Imprimir / Guardar PDF</button>
+            </div>
+
+            <div className="p-12 md:p-20 flex-1 flex flex-col print:p-8">
+               <div className="flex justify-between items-start mb-16">
+                  <div className="flex flex-col">
+                    <h1 className="text-4xl font-black text-brand-dark uppercase tracking-tight mb-2">{data.settings.brandName}</h1>
+                    <p className="text-brand-greige font-bold text-sm uppercase tracking-widest">Lista de Precios y Costos</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-brand-greige font-bold text-sm">{new Date().toLocaleDateString()}</p>
+                  </div>
+               </div>
+
+               <table className="w-full text-left border-collapse">
+                 <thead>
+                    <tr className="bg-brand-white/50 border-b-2 border-brand-dark">
+                       <th className="px-4 py-4 text-[10px] font-black text-brand-dark uppercase tracking-widest">Producto</th>
+                       <th className="px-4 py-4 text-[10px] font-black text-brand-dark uppercase tracking-widest text-right">Costo</th>
+                       <th className="px-4 py-4 text-[10px] font-black text-brand-dark uppercase tracking-widest text-right">Precio Final</th>
+                    </tr>
+                 </thead>
+                 <tbody className="divide-y divide-brand-white">
+                    {data.products.map((product) => {
+                      const cost = calculateProductCost(product, data.materials);
+                      const suggestedPrice = calculateFinalPrice(product, data.materials, data.settings.defaultMargin);
+                      const finalPrice = product.customPrice || suggestedPrice;
+                      return (
+                        <tr key={product.id} className="border-b border-brand-beige/30">
+                          <td className="px-4 py-5">
+                            <p className="font-bold text-brand-dark">{product.name}</p>
+                            {product.categoryId && (
+                              <p className="text-[8px] text-brand-greige uppercase font-black">
+                                {data.categories.find(c => c.id === product.categoryId)?.name}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-4 py-5 text-right font-medium text-brand-greige">${cost.toFixed(2)}</td>
+                          <td className="px-4 py-5 text-right font-black text-brand-dark">${finalPrice.toFixed(2)}</td>
+                        </tr>
+                      );
+                    })}
+                 </tbody>
+               </table>
+
+               <div className="mt-auto pt-20 border-t border-brand-white text-center">
+                  <p className="text-[10px] text-brand-greige font-bold uppercase tracking-widest italic">Documento generado internamente para control de stock y precios.</p>
+               </div>
+            </div>
           </div>
         </div>
       )}
