@@ -93,7 +93,7 @@ const AppContent: React.FC = () => {
 
       {/* Header Mobile para el Admin */}
       {isAdminPath && (
-        <header className="md:hidden bg-white border-b border-brand-beige p-4 flex justify-between items-center z-50">
+        <header className="md:hidden bg-white border-b border-brand-beige p-4 flex justify-between items-center z-50 print:hidden">
           <h1 className="text-lg font-black text-brand-dark tracking-tighter">Lala Manager</h1>
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -113,7 +113,7 @@ const AppContent: React.FC = () => {
         <aside className={`
           fixed md:relative inset-0 md:inset-auto z-40
           w-64 bg-white shadow-xl border-r border-brand-beige flex flex-col
-          transition-transform duration-300 ease-in-out
+          transition-transform duration-300 ease-in-out print:hidden
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
           <div className="p-6 border-b border-brand-white hidden md:block">
@@ -151,8 +151,8 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      <main className="flex-1 overflow-y-auto">
-        <div className={isAdminPath ? "p-6 md:p-10 max-w-7xl mx-auto" : ""}>
+      <main className="flex-1 overflow-y-auto print:overflow-visible">
+        <div className={isAdminPath ? "p-6 md:p-10 max-w-7xl mx-auto print:p-0 print:max-w-none" : ""}>
           <Routes>
             <Route path="/" element={<CustomerShop data={data} />} />
             <Route path="/showroom" element={<ShowroomView data={data} />} />

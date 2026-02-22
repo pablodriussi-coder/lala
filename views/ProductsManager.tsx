@@ -386,14 +386,14 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
 
       {/* Vista de Impresión / PDF */}
       {isPrintViewOpen && (
-        <div className="fixed inset-0 bg-brand-dark/50 backdrop-blur-xl flex items-start justify-center z-[100] p-4 md:p-10 overflow-y-auto print:bg-white print:p-0 print:block">
-          <div className="bg-white w-full max-w-[800px] shadow-2xl min-h-[1000px] flex flex-col print:shadow-none print:max-w-none print:w-full">
+        <div className="fixed inset-0 bg-brand-dark/50 backdrop-blur-xl flex items-start justify-center z-[100] p-4 md:p-10 overflow-y-auto print:bg-white print:p-0 print:static print:z-0 print:overflow-visible">
+          <div className="bg-white w-full max-w-[800px] shadow-2xl min-h-[1000px] flex flex-col print:shadow-none print:max-w-none print:w-full print:min-h-0">
             <div className="bg-brand-white p-6 flex justify-between items-center border-b border-brand-beige print:hidden sticky top-0 z-10">
               <button onClick={() => setIsPrintViewOpen(false)} className="text-brand-greige hover:text-brand-dark flex items-center gap-2">✕ Cerrar</button>
               <button onClick={() => window.print()} className="bg-brand-dark text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-sage">Imprimir / Guardar PDF</button>
             </div>
 
-            <div className="p-12 md:p-20 flex-1 flex flex-col print:p-8">
+            <div className="p-12 md:p-20 flex-1 flex flex-col print:p-0">
                <div className="flex justify-between items-start mb-16">
                   <div className="flex flex-col">
                     <h1 className="text-4xl font-black text-brand-dark uppercase tracking-tight mb-2">{data.settings.brandName}</h1>
@@ -404,9 +404,9 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                   </div>
                </div>
 
-               <table className="w-full text-left border-collapse">
+               <table className="w-full text-left border-collapse print:table-auto">
                  <thead>
-                    <tr className="bg-brand-white/50 border-b-2 border-brand-dark">
+                    <tr className="bg-brand-white/50 border-b-2 border-brand-dark print:bg-transparent">
                        <th className="px-4 py-4 text-[10px] font-black text-brand-dark uppercase tracking-widest">Producto</th>
                        <th className="px-4 py-4 text-[10px] font-black text-brand-dark uppercase tracking-widest text-right">Costo</th>
                        <th className="px-4 py-4 text-[10px] font-black text-brand-dark uppercase tracking-widest text-right">Precio Final</th>
@@ -418,7 +418,7 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                       const suggestedPrice = calculateFinalPrice(product, data.materials, data.settings.defaultMargin);
                       const finalPrice = product.customPrice || suggestedPrice;
                       return (
-                        <tr key={product.id} className="border-b border-brand-beige/30">
+                        <tr key={product.id} className="border-b border-brand-beige/30 break-inside-avoid">
                           <td className="px-4 py-5">
                             <p className="font-bold text-brand-dark">{product.name}</p>
                             {product.categoryId && (
@@ -435,7 +435,7 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
                  </tbody>
                </table>
 
-               <div className="mt-auto pt-20 border-t border-brand-white text-center">
+               <div className="mt-10 pt-10 border-t border-brand-white text-center print:mt-20">
                   <p className="text-[10px] text-brand-greige font-bold uppercase tracking-widest italic">Documento generado internamente para control de stock y precios.</p>
                </div>
             </div>
