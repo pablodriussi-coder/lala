@@ -78,7 +78,7 @@ const AppContent: React.FC = () => {
   ];
 
   return (
-    <div className={`flex h-screen bg-brand-white overflow-hidden ${!isAdminPath ? 'flex-col' : 'flex-col md:flex-row'}`}>
+    <div className={`flex h-screen bg-brand-white overflow-hidden print:h-auto print:overflow-visible ${!isAdminPath ? 'flex-col' : 'flex-col md:flex-row'}`}>
       
       {/* Botón flotante para el Admin (Solo aparece en la tienda pública) */}
       {!isAdminPath && (
@@ -151,7 +151,7 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      <main className="flex-1 overflow-y-auto print:overflow-visible">
+      <main className="flex-1 overflow-y-auto print:overflow-visible print:h-auto">
         <div className={isAdminPath ? "p-6 md:p-10 max-w-7xl mx-auto print:p-0 print:max-w-none" : ""}>
           <Routes>
             <Route path="/" element={<CustomerShop data={data} />} />

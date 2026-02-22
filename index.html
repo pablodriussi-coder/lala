@@ -55,7 +55,13 @@
         @media print {
             .print\:hidden { display: none !important; }
             .print\:block { display: block !important; }
+            .print\:static { position: static !important; }
+            .print\:overflow-visible { overflow: visible !important; }
+            .print\:h-auto { height: auto !important; }
             body { background: white !important; }
+            @page {
+                margin: 1cm;
+            }
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
