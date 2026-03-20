@@ -116,5 +116,6 @@ export interface AppData {
     shopLogo?: string;
     googleMapsUrl?: string;
     shopAddress?: string;
+    shopEmail?: string;
   };
 }

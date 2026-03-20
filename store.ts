@@ -18,7 +18,8 @@ const INITIAL_DATA: AppData = {
     facebookUrl: '',
     shopBannerText: 'Confecciones artesanales hechas con amor para tu bebé',
     googleMapsUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3284.016713276848!2d-58.38382008477038!3d-34.60373888045945!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x4aa9f0a6da5edb%3A0x11bead4e234e558b!2sObelisco!5e0!3m2!1sen!2sar!4v1680000000000!5m2!1sen!2sar',
-    shopAddress: 'Showroom en Buenos Aires'
+    shopAddress: 'Showroom en Buenos Aires',
+    shopEmail: 'contacto@ejemplo.com'
   }
 };
 
@@ -103,7 +104,8 @@ export const fetchAllData = async (): Promise<AppData> => {
         shopBannerText: settingsData.shop_banner_text || INITIAL_DATA.settings.shopBannerText,
         shopLogo: settingsData.shop_logo,
         googleMapsUrl: settingsData.google_maps_url || INITIAL_DATA.settings.googleMapsUrl,
-        shopAddress: settingsData.shop_address || INITIAL_DATA.settings.shopAddress
+        shopAddress: settingsData.shop_address || INITIAL_DATA.settings.shopAddress,
+        shopEmail: settingsData.shop_email || INITIAL_DATA.settings.shopEmail
       } : INITIAL_DATA.settings
     };
   } catch (error) {
@@ -124,7 +126,8 @@ export const syncSettings = async (settings: AppData['settings']) => {
     shop_banner_text: settings.shopBannerText,
     shop_logo: settings.shopLogo,
     google_maps_url: settings.googleMapsUrl,
-    shop_address: settings.shopAddress
+    shop_address: settings.shopAddress,
+    shop_email: settings.shopEmail
   });
   
   if (error) {

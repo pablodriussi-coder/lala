@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { AppData } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { supabase } from '../supabaseClient';
 
 interface DashboardProps {
   data: AppData;
@@ -12,8 +13,19 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempSettings, setTempSettings] = useState(data.settings);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [dbColumns, setDbColumns] = useState<string>('');
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    const checkColumns = async () => {
+      const { data, error } = await supabase.from('settings').select('*').limit(1);
+      if (data && data.length > 0) {
+        setDbColumns(Object.keys(data[0]).join(', '));
+      }
+    };
+    checkColumns();
+  }, []);
 
   const totalQuotes = data.quotes.length;
   
@@ -42,13 +54,17 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
       setIsEditing(false);
     } catch (err: any) {
       console.error(err);
-      setSaveError('Error al guardar. Asegúrate de haber agregado las columnas google_maps_url y shop_address en Supabase.');
+      setSaveError(`Error de Supabase: ${err.message || 'Error desconocido al guardar'}`);
     }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'shopBannerImage' | 'shopLogo', maxWidth = 1200) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    // Clear the input value so the same file can be selected again if needed
+    e.target.value = '';
+    
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (event) => {
@@ -63,7 +79,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
         ctx?.drawImage(img, 0, 0, width, height);
         const format = field === 'shopLogo' ? 'image/png' : 'image/jpeg';
         const quality = field === 'shopLogo' ? undefined : 0.6;
-        setTempSettings({ ...tempSettings, [field]: canvas.toDataURL(format, quality) });
+        setTempSettings(prev => ({ ...prev, [field]: canvas.toDataURL(format, quality) }));
       };
     };
   };
@@ -182,6 +198,11 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
               </div>
 
               <div>
+                <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Correo Electrónico</label>
+                <input type="email" value={tempSettings.shopEmail || ''} onChange={e => setTempSettings({...tempSettings, shopEmail: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-xs" placeholder="contacto@ejemplo.com" />
+              </div>
+
+              <div>
                 <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Google Maps Embed URL (Iframe src)</label>
                 <input type="text" value={tempSettings.googleMapsUrl || ''} onChange={e => setTempSettings({...tempSettings, googleMapsUrl: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-xs" placeholder="https://www.google.com/maps/embed?pb=..." />
                 <p className="text-[9px] text-brand-greige mt-1">Pega aquí el enlace "src" que te da Google Maps al compartir "Insertar un mapa".</p>
@@ -235,6 +256,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
               {saveError && (
                 <div className="mt-4 p-4 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-bold text-center">
                   {saveError}
+                  {dbColumns && <div className="mt-2 font-mono text-[10px] text-red-400">Columnas en DB: {dbColumns}</div>}
                 </div>
               )}
             </div>
