@@ -10,6 +10,7 @@ interface ShowroomViewProps {
 const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
   const categories = ['Todas', 'clase', 'exposicion', 'tip', 'evento'];
   const [activeFilter, setActiveFilter] = React.useState('Todas');
+  const [selectedEntry, setSelectedEntry] = React.useState<ShowroomEntry | null>(null);
 
   const filteredEntries = useMemo(() => {
     if (!data.showroomEntries) return [];
@@ -103,7 +104,7 @@ const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
                 <p className="text-brand-dark/60 leading-relaxed font-medium mb-10 line-clamp-4 italic text-sm">
                   {entry.content}
                 </p>
-                <button className="mt-auto text-[11px] font-black text-brand-dark uppercase tracking-[0.3em] flex items-center gap-3 group/btn hover:text-brand-sage transition-all">
+                <button onClick={() => setSelectedEntry(entry)} className="mt-auto text-[11px] font-black text-brand-dark uppercase tracking-[0.3em] flex items-center gap-3 group/btn hover:text-brand-sage transition-all">
                   Leer artículo completo <span className="group-hover/btn:translate-x-3 transition-transform text-lg">→</span>
                 </button>
               </div>
@@ -186,6 +187,43 @@ const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
           © {new Date().getFullYear()} {data.settings.brandName}. Todos los derechos reservados.
         </div>
       </footer>
+
+      {/* Modal de Artículo */}
+      {selectedEntry && (
+        <div className="fixed inset-0 bg-brand-dark/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4 md:p-8 animate-fadeIn" onClick={() => setSelectedEntry(null)}>
+          <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col relative animate-slideUp" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedEntry(null)}
+              className="absolute top-6 right-6 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-brand-dark hover:bg-brand-sage hover:text-white transition-all z-10 shadow-sm"
+            >
+              ✕
+            </button>
+            <div className="overflow-y-auto flex-1">
+              {selectedEntry.image && (
+                <div className="w-full h-64 md:h-96 relative">
+                  <img src={selectedEntry.image} className="w-full h-full object-cover" alt={selectedEntry.title} />
+                  <div className="absolute top-6 left-6">
+                    <span className="bg-white/95 backdrop-blur-md text-brand-dark px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg border border-brand-beige">
+                      {selectedEntry.type}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="p-8 md:p-16">
+                <p className="text-[11px] font-black text-brand-sage uppercase tracking-[0.3em] mb-4">
+                  {new Date(selectedEntry.date).toLocaleDateString()} — <span className="text-brand-red">★</span>
+                </p>
+                <h2 className="text-3xl md:text-5xl font-black text-brand-dark mb-8 leading-[1.1] uppercase tracking-tight">
+                  {selectedEntry.title}
+                </h2>
+                <div className="text-brand-dark/80 font-medium leading-relaxed whitespace-pre-wrap text-lg">
+                  {selectedEntry.content}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
