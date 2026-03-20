@@ -171,6 +171,17 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
                 <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Facebook (URL)</label>
                 <input type="text" value={tempSettings.facebookUrl} onChange={e => setTempSettings({...tempSettings, facebookUrl: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-xs" />
               </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Google Maps Embed URL (Iframe src)</label>
+                <input type="text" value={tempSettings.googleMapsUrl || ''} onChange={e => setTempSettings({...tempSettings, googleMapsUrl: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-xs" placeholder="https://www.google.com/maps/embed?pb=..." />
+                <p className="text-[9px] text-brand-greige mt-1">Pega aquí el enlace "src" que te da Google Maps al compartir "Insertar un mapa".</p>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Dirección del Showroom / Tienda</label>
+                <input type="text" value={tempSettings.shopAddress || ''} onChange={e => setTempSettings({...tempSettings, shopAddress: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-xs" placeholder="Ej: Showroom en Buenos Aires" />
+              </div>
               
               <div className="pt-4 border-t border-brand-white">
                 <label className="block text-[10px] font-black text-brand-sage uppercase tracking-widest mb-4">Personalización Visual</label>

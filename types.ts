@@ -114,5 +114,7 @@ export interface AppData {
     shopBannerImage?: string; 
     shopBannerText?: string;  
     shopLogo?: string;
+    googleMapsUrl?: string;
+    shopAddress?: string;
   };
 }

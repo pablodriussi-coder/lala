@@ -112,12 +112,26 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
         {data.settings.shopBannerImage ? (
           <img src={data.settings.shopBannerImage} className="absolute inset-0 w-full h-full object-cover object-left lg:object-center" alt="Banner" />
         ) : (
-          <div className="absolute inset-0 bg-brand-beige flex items-center justify-center">
-            <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter drop-shadow-md px-6 text-center">
+          <div className="absolute inset-0 bg-brand-beige" />
+        )}
+        
+        {/* Overlay Logo/Brand Name */}
+        <div className="relative z-10 flex flex-col items-center justify-center p-6">
+          {data.settings.shopLogo ? (
+            <img src={data.settings.shopLogo} alt={data.settings.brandName} className="max-h-24 md:max-h-36 w-auto object-contain drop-shadow-md" />
+          ) : (
+            <h1 className="text-5xl md:text-8xl font-black text-brand-dark tracking-tighter text-center drop-shadow-md">
               {data.settings.brandName}
             </h1>
-          </div>
-        )}
+          )}
+          {data.settings.shopBannerText && (
+            <div className="mt-8 border-l-2 border-brand-dark/60 pl-4 max-w-sm self-center md:self-auto">
+              <p className="text-brand-dark/80 text-sm md:text-base font-medium italic text-left leading-relaxed">
+                "{data.settings.shopBannerText}"
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div id="catalogo" className="w-full relative z-20">
@@ -186,7 +200,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-lg">Ubicación</h4>
-                                    <p className="text-white/80">Showroom en Buenos Aires</p>
+                                    <p className="text-white/80">{data.settings.shopAddress || 'Showroom en Buenos Aires'}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
@@ -209,13 +223,20 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                             </div>
                         </div>
                         <div className="h-[300px] bg-white/20 rounded-3xl overflow-hidden backdrop-blur-sm flex items-center justify-center relative">
-                            <iframe 
-                              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3284.016713276848!2d-58.38382008477038!3d-34.60373888045945!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x4aa9f0a6da5edb%3A0x11bead4e234e558b!2sObelisco!5e0!3m2!1sen!2sar!4v1680000000000!5m2!1sen!2sar" 
-                              className="absolute inset-0 w-full h-full border-0" 
-                              allowFullScreen={false} 
-                              loading="lazy" 
-                              referrerPolicy="no-referrer-when-downgrade"
-                            ></iframe>
+                            {data.settings.googleMapsUrl ? (
+                              <iframe 
+                                src={data.settings.googleMapsUrl} 
+                                className="absolute inset-0 w-full h-full border-0" 
+                                allowFullScreen={false} 
+                                loading="lazy" 
+                                referrerPolicy="no-referrer-when-downgrade"
+                              ></iframe>
+                            ) : (
+                              <div className="text-white/60 text-center p-6">
+                                <span className="text-4xl block mb-2">📍</span>
+                                <p className="font-bold text-sm">Ubicación no configurada</p>
+                              </div>
+                            )}
                         </div>
                     </div>
                 </div>
