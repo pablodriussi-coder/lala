@@ -345,15 +345,15 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
 
       {/* Vista Previa Impresión (PDF) */}
       {isPreviewOpen && quoteForPreview && (
-        <div className="fixed inset-0 bg-brand-dark/50 backdrop-blur-xl flex items-start justify-center z-[100] p-4 md:p-10 overflow-y-auto print:bg-white print:p-0 print:block">
-          <div className="bg-white w-full max-w-[800px] shadow-2xl min-h-[1000px] flex flex-col print:shadow-none print:max-w-none print:w-full">
+        <div className="fixed inset-0 bg-brand-dark/50 backdrop-blur-xl flex items-start justify-center z-[100] p-4 md:p-10 overflow-y-auto print:bg-white print:p-0 print:static print:z-0 print:overflow-visible print:block">
+          <div className="bg-white w-full max-w-[800px] shadow-2xl min-h-[1000px] flex flex-col print:shadow-none print:max-w-none print:w-full print:min-h-0 print:static">
             <div className="bg-brand-white p-6 flex justify-between items-center border-b border-brand-beige print:hidden sticky top-0 z-10">
               <button onClick={() => setIsPreviewOpen(false)} className="text-brand-greige hover:text-brand-dark flex items-center gap-2">✕ Cerrar</button>
               <button onClick={handlePrint} className="bg-brand-dark text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-sage">Imprimir / PDF</button>
             </div>
 
-            <div className="p-12 md:p-20 flex-1 flex flex-col print:p-8">
-               <div className="flex justify-between items-start mb-20">
+            <div className="p-12 md:p-20 flex-1 flex flex-col print:p-0 print:block">
+               <div className="flex justify-between items-start mb-20 print:mb-10">
                   <BrandLogo />
                   <div className="text-right pt-4">
                     <h3 className="text-3xl font-black text-brand-dark uppercase tracking-[0.2em] mb-2">PRESUPUESTO</h3>

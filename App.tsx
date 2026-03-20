@@ -4,6 +4,8 @@ import { HashRouter, Routes, Route, Link, useLocation, Navigate } from 'react-ro
 import { fetchAllData, syncMaterialsBatch, syncClientsBatch, syncTransactionsBatch, syncQuote, syncProduct, syncSettings, syncCategory } from './store';
 import { AppData, Category, Product } from './types';
 import { ICONS } from './constants';
+import { supabase } from './supabaseClient';
+import { Session } from '@supabase/supabase-js';
 
 // Vistas del Manager
 import Dashboard from './views/Dashboard';
@@ -15,6 +17,7 @@ import AccountingManager from './views/AccountingManager';
 import QuickCalculator from './views/QuickCalculator';
 import CategoriesManager from './views/CategoriesManager';
 import ShowroomManager from './views/ShowroomManager';
+import Login from './views/Login';
 
 // Vistas Públicas
 import CustomerShop from './views/CustomerShop';
@@ -24,7 +27,22 @@ const AppContent: React.FC = () => {
   const [data, setData] = useState<AppData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
   const location = useLocation();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     fetchAllData().then(res => {
@@ -51,6 +69,10 @@ const AppContent: React.FC = () => {
   }
 
   const isAdminPath = location.pathname.startsWith('/admin');
+
+  if (isAdminPath && !session) {
+    return <Login />;
+  }
 
   const handleUpdate = (updater: (prev: AppData) => AppData) => {
     setData(prev => {
@@ -137,8 +159,14 @@ const AppContent: React.FC = () => {
             ))}
           </nav>
 
-          <div className="p-4 border-t border-brand-beige">
+          <div className="p-4 border-t border-brand-beige space-y-2">
             <Link to="/" className="block text-center bg-brand-sage text-white p-3 rounded-xl font-bold text-xs shadow-md hover:bg-brand-dark transition-all">✨ Ver Tienda</Link>
+            <button 
+              onClick={() => supabase.auth.signOut()}
+              className="w-full text-center bg-red-100 text-red-600 p-3 rounded-xl font-bold text-xs shadow-md hover:bg-red-200 transition-all"
+            >
+              Cerrar Sesión
+            </button>
           </div>
         </aside>
       )}
