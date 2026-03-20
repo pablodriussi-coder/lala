@@ -113,7 +113,7 @@ export const fetchAllData = async (): Promise<AppData> => {
 };
 
 export const syncSettings = async (settings: AppData['settings']) => {
-  await supabase.from('settings').upsert({
+  const { error } = await supabase.from('settings').upsert({
     id: 'default',
     brand_name: settings.brandName,
     default_margin: settings.defaultMargin,
@@ -126,6 +126,11 @@ export const syncSettings = async (settings: AppData['settings']) => {
     google_maps_url: settings.googleMapsUrl,
     shop_address: settings.shopAddress
   });
+  
+  if (error) {
+    console.error('Error saving settings to Supabase:', error);
+    throw error;
+  }
 };
 
 export const syncShowroomEntry = async (entry: ShowroomEntry) => {

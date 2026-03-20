@@ -11,6 +11,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempSettings, setTempSettings] = useState(data.settings);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -32,9 +33,17 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 5);
 
-  const handleSaveSettings = () => {
-    onUpdateSettings?.(tempSettings);
-    setIsEditing(false);
+  const handleSaveSettings = async () => {
+    try {
+      setSaveError(null);
+      if (onUpdateSettings) {
+        await onUpdateSettings(tempSettings);
+      }
+      setIsEditing(false);
+    } catch (err: any) {
+      console.error(err);
+      setSaveError('Error al guardar. Asegúrate de haber agregado las columnas google_maps_url y shop_address en Supabase.');
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'shopBannerImage' | 'shopLogo', maxWidth = 1200) => {
@@ -223,6 +232,11 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
                 <button onClick={() => setIsEditing(false)} className="flex-1 py-4 text-brand-greige font-bold">Cancelar</button>
                 <button onClick={handleSaveSettings} className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold">Guardar Cambios</button>
               </div>
+              {saveError && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-bold text-center">
+                  {saveError}
+                </div>
+              )}
             </div>
           </div>
         </div>
