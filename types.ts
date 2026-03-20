@@ -117,5 +117,7 @@ export interface AppData {
     googleMapsUrl?: string;
     shopAddress?: string;
     shopEmail?: string;
+    cloudinaryCloudName?: string;
+    cloudinaryUploadPreset?: string;
   };
 }

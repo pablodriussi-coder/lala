@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { AppData, ShowroomEntry, ShowroomEntryType } from '../types';
 import { syncShowroomEntry, deleteShowroomEntry } from '../store';
 import { ICONS } from '../constants';
+import { uploadImageToCloudinary } from '../services/cloudinaryService';
 
 interface ShowroomManagerProps {
   data: AppData;
@@ -21,7 +22,15 @@ const ShowroomManager: React.FC<ShowroomManagerProps> = ({ data, updateData }) =
     date: Date.now()
   });
 
-  const compressImage = (file: File): Promise<string> => {
+  const compressImage = async (file: File): Promise<string> => {
+    if (data.settings.cloudinaryCloudName && data.settings.cloudinaryUploadPreset) {
+      try {
+        return await uploadImageToCloudinary(file, data.settings.cloudinaryCloudName, data.settings.cloudinaryUploadPreset);
+      } catch (error) {
+        console.error('Error uploading to Cloudinary, falling back to base64:', error);
+      }
+    }
+
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);

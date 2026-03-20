@@ -4,6 +4,7 @@ import { AppData, Product, ProductMaterialRequirement, MaterialUnit, Material, D
 import { ICONS } from '../constants';
 import { calculateFinalPrice, calculateProductCost } from '../services/calculationService';
 import { syncProduct, deleteFromSupabase } from '../store';
+import { uploadImageToCloudinary } from '../services/cloudinaryService';
 
 interface ProductsManagerProps {
   data: AppData;
@@ -40,7 +41,16 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
     }
   };
 
-  const compressImage = (file: File, quality = 0.5): Promise<string> => {
+  const compressImage = async (file: File, quality = 0.5): Promise<string> => {
+    if (data.settings.cloudinaryCloudName && data.settings.cloudinaryUploadPreset) {
+      try {
+        return await uploadImageToCloudinary(file, data.settings.cloudinaryCloudName, data.settings.cloudinaryUploadPreset);
+      } catch (error) {
+        console.error('Error uploading to Cloudinary, falling back to base64:', error);
+        // Fallback to base64 below
+      }
+    }
+
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);

@@ -4,6 +4,8 @@ import { AppData } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { supabase } from '../supabaseClient';
 
+import { uploadImageToCloudinary } from '../services/cloudinaryService';
+
 interface DashboardProps {
   data: AppData;
   onUpdateSettings?: (settings: AppData['settings']) => void;
@@ -58,13 +60,25 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'shopBannerImage' | 'shopLogo', maxWidth = 1200) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'shopBannerImage' | 'shopLogo', maxWidth = 1200) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
     // Clear the input value so the same file can be selected again if needed
     e.target.value = '';
     
+    if (tempSettings.cloudinaryCloudName && tempSettings.cloudinaryUploadPreset) {
+      try {
+        const url = await uploadImageToCloudinary(file, tempSettings.cloudinaryCloudName, tempSettings.cloudinaryUploadPreset);
+        setTempSettings(prev => ({ ...prev, [field]: url }));
+        return;
+      } catch (error) {
+        console.error('Error uploading to Cloudinary:', error);
+        alert('Error al subir la imagen a Cloudinary. Revisa la configuración.');
+      }
+    }
+
+    // Fallback to base64 if Cloudinary is not configured
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (event) => {
@@ -211,6 +225,21 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onUpdateSettings }) => {
               <div>
                 <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Dirección del Showroom / Tienda</label>
                 <input type="text" value={tempSettings.shopAddress || ''} onChange={e => setTempSettings({...tempSettings, shopAddress: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-xs" placeholder="Ej: Showroom en Buenos Aires" />
+              </div>
+
+              <div className="pt-4 border-t border-brand-white">
+                <label className="block text-[10px] font-black text-brand-sage uppercase tracking-widest mb-4">Configuración de Cloudinary (Imágenes)</label>
+                <p className="text-[9px] text-brand-greige mb-4">Configura Cloudinary para almacenar las imágenes en alta calidad. Necesitas crear una cuenta gratuita en cloudinary.com y configurar un "Upload Preset" sin firma (unsigned).</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Cloud Name</label>
+                    <input type="text" value={tempSettings.cloudinaryCloudName || ''} onChange={e => setTempSettings({...tempSettings, cloudinaryCloudName: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-xs" placeholder="Ej: dxxabc123" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Upload Preset</label>
+                    <input type="text" value={tempSettings.cloudinaryUploadPreset || ''} onChange={e => setTempSettings({...tempSettings, cloudinaryUploadPreset: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-xs" placeholder="Ej: mi_preset_sin_firma" />
+                  </div>
+                </div>
               </div>
               
               <div className="pt-4 border-t border-brand-white">

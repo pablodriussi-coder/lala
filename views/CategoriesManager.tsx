@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { AppData, Category } from '../types';
 import { ICONS } from '../constants';
 import { syncCategory, deleteFromSupabase } from '../store';
+import { uploadImageToCloudinary } from '../services/cloudinaryService';
 
 interface CategoriesManagerProps {
   data: AppData;
@@ -15,7 +16,15 @@ const CategoriesManager: React.FC<CategoriesManagerProps> = ({ data, updateData 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<Partial<Category>>({ name: '', image: '' });
 
-  const compressImage = (file: File): Promise<string> => {
+  const compressImage = async (file: File): Promise<string> => {
+    if (data.settings.cloudinaryCloudName && data.settings.cloudinaryUploadPreset) {
+      try {
+        return await uploadImageToCloudinary(file, data.settings.cloudinaryCloudName, data.settings.cloudinaryUploadPreset);
+      } catch (error) {
+        console.error('Error uploading to Cloudinary, falling back to base64:', error);
+      }
+    }
+
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);

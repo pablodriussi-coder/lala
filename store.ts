@@ -105,7 +105,9 @@ export const fetchAllData = async (): Promise<AppData> => {
         shopLogo: settingsData.shop_logo,
         googleMapsUrl: settingsData.google_maps_url || INITIAL_DATA.settings.googleMapsUrl,
         shopAddress: settingsData.shop_address || INITIAL_DATA.settings.shopAddress,
-        shopEmail: settingsData.shop_email || INITIAL_DATA.settings.shopEmail
+        shopEmail: settingsData.shop_email || INITIAL_DATA.settings.shopEmail,
+        cloudinaryCloudName: settingsData.cloudinary_cloud_name || '',
+        cloudinaryUploadPreset: settingsData.cloudinary_upload_preset || ''
       } : INITIAL_DATA.settings
     };
   } catch (error) {
@@ -127,7 +129,9 @@ export const syncSettings = async (settings: AppData['settings']) => {
     shop_logo: settings.shopLogo,
     google_maps_url: settings.googleMapsUrl,
     shop_address: settings.shopAddress,
-    shop_email: settings.shopEmail
+    shop_email: settings.shopEmail,
+    cloudinary_cloud_name: settings.cloudinaryCloudName,
+    cloudinary_upload_preset: settings.cloudinaryUploadPreset
   });
   
   if (error) {

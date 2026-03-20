@@ -1,5 +1,6 @@
 
 import React, { useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { AppData, ShowroomEntry } from '../types';
 
@@ -197,10 +198,10 @@ const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
       </footer>
 
       {/* Modal de Artículo */}
-      {selectedEntry && (
+      {selectedEntry && createPortal(
         <div 
           className="fixed inset-0 bg-brand-dark/60 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-fadeIn" 
-          style={{ zIndex: 9999 }}
+          style={{ zIndex: 99999 }}
           onClick={() => setSelectedEntry(null)}
         >
           <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col relative animate-slideUp" onClick={e => e.stopPropagation()}>
@@ -234,7 +235,8 @@ const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
