@@ -81,7 +81,15 @@ const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
         {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {filteredEntries.length > 0 ? [...filteredEntries].reverse().map(entry => (
-            <div key={entry.id} className="bg-white rounded-[3rem] overflow-hidden shadow-sm border border-brand-beige group hover:shadow-2xl transition-all duration-500 flex flex-col h-full animate-fadeIn">
+            <div 
+              key={entry.id} 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSelectedEntry(entry);
+              }}
+              className="cursor-pointer bg-white rounded-[3rem] overflow-hidden shadow-sm border border-brand-beige group hover:shadow-2xl transition-all duration-500 flex flex-col h-full animate-fadeIn"
+            >
               <div className="aspect-[16/10] relative overflow-hidden bg-brand-white">
                 {entry.image ? (
                   <img src={entry.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={entry.title} />
@@ -104,9 +112,9 @@ const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
                 <p className="text-brand-dark/60 leading-relaxed font-medium mb-10 line-clamp-4 italic text-sm">
                   {entry.content}
                 </p>
-                <button onClick={() => setSelectedEntry(entry)} className="mt-auto text-[11px] font-black text-brand-dark uppercase tracking-[0.3em] flex items-center gap-3 group/btn hover:text-brand-sage transition-all">
+                <div className="mt-auto text-[11px] font-black text-brand-dark uppercase tracking-[0.3em] flex items-center gap-3 group/btn hover:text-brand-sage transition-all">
                   Leer artículo completo <span className="group-hover/btn:translate-x-3 transition-transform text-lg">→</span>
-                </button>
+                </div>
               </div>
             </div>
           )) : (
@@ -190,7 +198,11 @@ const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
 
       {/* Modal de Artículo */}
       {selectedEntry && (
-        <div className="fixed inset-0 bg-brand-dark/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4 md:p-8 animate-fadeIn" onClick={() => setSelectedEntry(null)}>
+        <div 
+          className="fixed inset-0 bg-brand-dark/60 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-fadeIn" 
+          style={{ zIndex: 9999 }}
+          onClick={() => setSelectedEntry(null)}
+        >
           <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col relative animate-slideUp" onClick={e => e.stopPropagation()}>
             <button 
               onClick={() => setSelectedEntry(null)}
