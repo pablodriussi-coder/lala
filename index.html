@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lala accesorios Manager</title>
+    <meta name="description" content="Lala accesorios: Accesorios para bebés diseñados con amor. Descubre nuestro catálogo de ternura y novedades en nuestro showroom.">
+    <title>Lala accesorios - Catálogo de Ternura</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://esm.sh">
@@ -28,6 +29,23 @@
           }
         }
       }
+    </script>
+    <script>
+      // Attempt to prevent TypeError when libraries try to overwrite window.fetch
+      (function() {
+        try {
+          const originalFetch = window.fetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() { return originalFetch; },
+            set: function(v) { 
+              console.warn('Attempt to overwrite window.fetch ignored.');
+            },
+            configurable: true // Allow redefinition if needed
+          });
+        } catch (e) {
+          // If it's already read-only, we just ignore it
+        }
+      })();
     </script>
     <style>
         body {
@@ -78,20 +96,6 @@
             animation: fadeIn 0.5s ease-out forwards;
         }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
-    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
-    "recharts": "https://esm.sh/recharts@^3.7.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "xlsx": "https://esm.sh/xlsx@0.18.5",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.7"
-  }
-}
-</script>
 </head>
 <body>
     <div id="root"></div>
