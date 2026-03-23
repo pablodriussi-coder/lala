@@ -160,7 +160,7 @@ export const syncProduct = async (product: Product) => {
     id: product.id,
     name: product.name,
     description: product.description,
-    category_id: product.categoryId,
+    category_id: product.categoryId || null,
     base_labor_cost: Number(product.baseLaborCost) || 0,
     custom_price: product.customPrice,
     profit_margin: product.profitMargin,

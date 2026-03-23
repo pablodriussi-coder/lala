@@ -13,6 +13,7 @@ interface ProductsManagerProps {
 
 const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isPrintViewOpen, setIsPrintViewOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -101,29 +102,37 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
     e.preventDefault();
     if (!formData.name) return alert("El nombre es obligatorio.");
 
-    const productToSave: Product = {
-      ...formData,
-      id: editingId || crypto.randomUUID(),
-      baseLaborCost: Number(formData.baseLaborCost) || 0,
-      customPrice: formData.customPrice ? Number(formData.customPrice) : undefined,
-      profitMargin: formData.profitMargin !== undefined ? Number(formData.profitMargin) : undefined,
-      materials: formData.materials || [],
-      designOptions: Array.isArray(formData.designOptions) ? formData.designOptions : [],
-      images: Array.isArray(formData.images) ? formData.images : []
-    };
-    
-    // Actualizar localmente
-    updateData(prev => ({ 
-      ...prev, 
-      products: editingId 
-        ? prev.products.map(p => p.id === editingId ? productToSave : p) 
-        : [...prev.products, productToSave] 
-    }));
+    setIsSaving(true);
+    try {
+      const productToSave: Product = {
+        ...formData,
+        id: editingId || crypto.randomUUID(),
+        baseLaborCost: Number(formData.baseLaborCost) || 0,
+        customPrice: formData.customPrice ? Number(formData.customPrice) : undefined,
+        profitMargin: formData.profitMargin !== undefined ? Number(formData.profitMargin) : undefined,
+        materials: formData.materials || [],
+        designOptions: Array.isArray(formData.designOptions) ? formData.designOptions : [],
+        images: Array.isArray(formData.images) ? formData.images : []
+      };
+      
+      // Actualizar localmente
+      updateData(prev => ({ 
+        ...prev, 
+        products: editingId 
+          ? prev.products.map(p => p.id === editingId ? productToSave : p) 
+          : [...prev.products, productToSave] 
+      }));
 
-    // Sincronizar con Supabase
-    await syncProduct(productToSave);
-    
-    closeModal();
+      // Sincronizar con Supabase
+      await syncProduct(productToSave);
+      
+      closeModal();
+    } catch (error) {
+      console.error("Error saving product:", error);
+      alert("Hubo un error al guardar el producto. Por favor intenta de nuevo.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const openModal = (product?: Product) => {
@@ -385,8 +394,12 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
 
               <div className="flex gap-4 pt-6 border-t border-brand-white">
                 <button type="button" onClick={closeModal} className="flex-1 py-4 text-brand-dark/50 font-bold">Cancelar</button>
-                <button type="submit" className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold shadow-xl hover:bg-brand-dark transition-all">
-                  {editingId ? 'Guardar Cambios' : 'Crear Producto'}
+                <button 
+                  type="submit" 
+                  disabled={isSaving}
+                  className={`flex-[2] py-4 rounded-2xl font-bold shadow-xl transition-all active:scale-95 ${isSaving ? 'bg-brand-greige cursor-not-allowed text-white/50' : 'bg-brand-sage text-white hover:bg-brand-dark'}`}
+                >
+                  {isSaving ? 'Guardando...' : (editingId ? 'Guardar Cambios' : 'Crear Producto')}
                 </button>
               </div>
             </form>

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AppData, Product, DesignOption } from '../types';
 import { calculateFinalPrice } from '../services/calculationService';
@@ -16,20 +16,32 @@ interface CartItem {
 
 const ProductCard: React.FC<{ 
     product: Product & { price: number }, 
-    onOpenSelector: (product: Product & { price: number }) => void 
-}> = ({ product, onOpenSelector }) => {
+    isInCart: boolean,
+    onOpenSelector: (product: Product & { price: number }) => void
+}> = ({ product, isInCart, onOpenSelector }) => {
     const hasImages = product.images && product.images.length > 0;
+
     return (
-        <div className="bg-white rounded-[1.25rem] overflow-hidden shadow-sm border border-brand-beige hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
+        <div 
+          onClick={() => onOpenSelector(product)}
+          className={`bg-white rounded-[1rem] md:rounded-[1.25rem] overflow-hidden shadow-sm border transition-all duration-300 group flex flex-col h-full cursor-pointer relative ${isInCart ? 'border-brand-sage ring-2 ring-brand-sage/20 shadow-lg scale-[1.02]' : 'border-brand-beige hover:border-brand-greige hover:shadow-xl'}`}
+        >
+            {isInCart && (
+              <div className="absolute top-2 right-2 z-20 bg-brand-sage text-white w-6 h-6 rounded-full flex items-center justify-center shadow-lg animate-bounce-subtle">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+              </div>
+            )}
             <div className="aspect-[4/5] bg-brand-white relative overflow-hidden flex items-center justify-center">
                 {hasImages ? (
-                    <img src={product.images![0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={product.name} />
-                ) : <div className="text-5xl grayscale opacity-10 select-none">🍼</div>}
-                <div className="absolute top-3 left-3 bg-brand-dark/80 backdrop-blur-sm text-white px-3 py-1 rounded-full font-black text-[10px] shadow-lg">${product.price.toFixed(0)}</div>
+                    <img src={product.images![0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={product.name} referrerPolicy="no-referrer" />
+                ) : <div className="text-4xl md:text-5xl grayscale opacity-10 select-none">🍼</div>}
+                <div className="absolute top-2 left-2 md:top-3 md:left-3 bg-brand-dark/80 backdrop-blur-sm text-white px-2 py-0.5 md:px-3 md:py-1 rounded-full font-black text-[9px] md:text-[10px] shadow-lg">${product.price.toFixed(0)}</div>
             </div>
-            <div className="p-4 flex-1 flex flex-col text-center">
-                <h3 className="text-xs font-bold text-brand-dark mb-1 truncate uppercase tracking-tight">{product.name}</h3>
-                <button onClick={() => onOpenSelector(product)} className="w-full mt-auto bg-brand-sage text-white py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-brand-dark transition-all active:scale-95 shadow-sm">Ver Detalles</button>
+            <div className="p-3 md:p-4 flex-1 flex flex-col text-center">
+                <h3 className="text-[10px] md:text-xs font-bold text-brand-dark mb-2 uppercase tracking-tight leading-tight line-clamp-2 min-h-[2.5em] flex items-center justify-center">{product.name}</h3>
+                <div className="w-full mt-auto bg-brand-sage text-white py-2 md:py-2.5 rounded-lg md:rounded-xl font-black text-[8px] md:text-[9px] uppercase tracking-widest hover:bg-brand-dark transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2">
+                  Ver Detalles
+                </div>
             </div>
         </div>
     );
@@ -40,7 +52,16 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectingProduct, setSelectingProduct] = useState<(Product & { price: number }) | null>(null);
-  const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
+  const [selectedDesignIds, setSelectedDesignIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (selectingProduct) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [selectingProduct]);
 
   const productsWithPrices = useMemo(() => {
     if (!data.products) return [];
@@ -52,6 +73,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
 
   const filteredProducts = useMemo(() => {
     if (!selectedCategoryId) return [];
+    if (selectedCategoryId === 'all') return productsWithPrices;
     return productsWithPrices.filter(p => p.categoryId === selectedCategoryId);
   }, [selectedCategoryId, productsWithPrices]);
 
@@ -61,15 +83,60 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
 
   const addToCart = () => {
     if (!selectingProduct) return;
-    const design = selectingProduct.designOptions?.find(d => d.id === selectedDesignId);
+    
+    const designs = selectingProduct.designOptions?.filter(d => selectedDesignIds.includes(d.id)) || [];
+    const hasOptions = selectingProduct.designOptions && selectingProduct.designOptions.length > 0;
+    
     setCart(prev => {
-      const existing = prev.find(item => item.productId === selectingProduct.id && item.selectedDesign?.id === design?.id);
-      if (existing) return prev.map(item => (item.productId === selectingProduct.id && item.selectedDesign?.id === design?.id) ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...prev, { productId: selectingProduct.id, quantity: 1, selectedDesign: design }];
+      const otherItems = prev.filter(item => item.productId !== selectingProduct.id);
+      
+      // If product has no options and is already in cart, and we are in the modal, 
+      // we might want to toggle it off if they click "Quitar" or just keep it.
+      // But the user said "añadir al carrito" from the detail.
+      
+      const newItems: CartItem[] = [];
+      if (designs.length > 0) {
+        designs.forEach(design => {
+          newItems.push({ productId: selectingProduct.id, quantity: 1, selectedDesign: design });
+        });
+      } else if (!hasOptions) {
+        // If it's already in cart, we keep it (or we could toggle, but user said "añadir")
+        newItems.push({ productId: selectingProduct.id, quantity: 1 });
+      }
+      
+      return [...otherItems, ...newItems];
     });
+    
     setSelectingProduct(null);
-    setSelectedDesignId(null);
+    setSelectedDesignIds([]);
     setIsCartOpen(true);
+  };
+
+  const removeFromCart = (productId: string) => {
+    setCart(prev => prev.filter(item => item.productId !== productId));
+    setSelectingProduct(null);
+    setSelectedDesignIds([]);
+  };
+
+  const toggleQuickProduct = (product: Product & { price: number }) => {
+    setCart(prev => {
+      const isInCart = prev.some(item => item.productId === product.id);
+      if (isInCart) {
+        return prev.filter(item => item.productId !== product.id);
+      } else {
+        return [...prev, { productId: product.id, quantity: 1 }];
+      }
+    });
+  };
+
+  const toggleDesignSelection = (designId: string) => {
+    setSelectedDesignIds(prev => {
+      if (prev.includes(designId)) {
+        return prev.filter(id => id !== designId);
+      } else {
+        return [...prev, designId];
+      }
+    });
   };
 
   const cartTotal = cart.reduce((acc, item) => {
@@ -91,6 +158,29 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
 
   return (
     <div className="min-h-screen bg-brand-white pb-32 animate-fadeIn font-['Quicksand'] relative overflow-x-hidden">
+      <style>{`
+        @keyframes bounce-subtle {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.15); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-bounce-subtle {
+          animation: bounce-subtle 0.5s ease-in-out;
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.4s ease-out forwards;
+        }
+        .animate-slideUp {
+          animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
       
       {/* Redes Sociales Barra Derecha Fija - Consistencia con el Blog */}
       <div className="fixed right-0 top-1/2 -translate-y-1/2 z-[90] flex flex-col gap-2">
@@ -123,7 +213,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
       {/* Hero Banner Section */}
       <div className="relative w-full h-[60vh] md:h-[80vh] overflow-hidden flex items-center justify-center">
         {data.settings.shopBannerImage ? (
-          <img src={data.settings.shopBannerImage} className="absolute inset-0 w-full h-full object-cover object-left lg:object-center" alt="Banner" />
+          <img src={data.settings.shopBannerImage} className="absolute inset-0 w-full h-full object-cover object-left lg:object-center" alt="Banner" referrerPolicy="no-referrer" />
         ) : (
           <div className="absolute inset-0 bg-brand-beige" />
         )}
@@ -131,7 +221,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
         {/* Overlay Logo/Brand Name */}
         <div className="relative z-10 flex flex-col items-center justify-center p-6">
           {data.settings.shopLogo ? (
-            <img src={data.settings.shopLogo} alt={data.settings.brandName} className="max-h-24 md:max-h-36 w-auto object-contain drop-shadow-md" />
+            <img src={data.settings.shopLogo} alt={data.settings.brandName} className="max-h-24 md:max-h-36 w-auto object-contain drop-shadow-md" referrerPolicy="no-referrer" />
           ) : (
             <h1 className="text-5xl md:text-8xl font-black text-brand-dark tracking-tighter text-center drop-shadow-md">
               {data.settings.brandName}
@@ -158,10 +248,16 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                         <h2 className="text-sm font-bold text-white/80 uppercase tracking-[0.2em] mt-2">Explora nuestras categorías</h2>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                        <button onClick={() => setSelectedCategoryId('all')} className="flex flex-col items-center group active:scale-95 transition-transform">
+                            <div className="aspect-square w-full rounded-3xl overflow-hidden mb-4 bg-brand-dark flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-700">
+                                <span className="text-4xl">✨</span>
+                            </div>
+                            <span className="text-sm font-bold text-white uppercase tracking-wider text-center px-1">Ver Todo</span>
+                        </button>
                         {data.categories.map(cat => (
                         <button key={cat.id} onClick={() => setSelectedCategoryId(cat.id)} className="flex flex-col items-center group active:scale-95 transition-transform">
                             <div className="aspect-square w-full rounded-3xl overflow-hidden mb-4 bg-white shadow-lg">
-                            {cat.image ? <img src={cat.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={cat.name} /> : <div className="w-full h-full flex items-center justify-center text-4xl grayscale opacity-10">🎀</div>}
+                            {cat.image ? <img src={cat.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={cat.name} referrerPolicy="no-referrer" /> : <div className="w-full h-full flex items-center justify-center text-4xl grayscale opacity-10">🎀</div>}
                             </div>
                             <span className="text-sm font-bold text-white uppercase tracking-wider text-center px-1">{cat.name}</span>
                         </button>
@@ -183,7 +279,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                          <Link to="/showroom" key={entry.id} className="bg-white rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all group overflow-hidden flex flex-col h-full">
                             <div className="aspect-video bg-gray-100 rounded-2xl overflow-hidden mb-6 relative">
                                {entry.image ? (
-                                 <img src={entry.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={entry.title} />
+                                 <img src={entry.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={entry.title} referrerPolicy="no-referrer" />
                                ) : <div className="w-full h-full flex items-center justify-center text-3xl grayscale opacity-10">✨</div>}
                             </div>
                             <div className="flex-1 flex flex-col">
@@ -256,20 +352,34 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
             </div>
           </div>
         ) : (
-          <div className="max-w-7xl mx-auto px-6 py-16 animate-fadeIn">
-            <div className="bg-white p-10 md:p-16 rounded-[2.5rem] shadow-2xl border border-brand-beige">
-                <button onClick={() => setSelectedCategoryId(null)} className="flex items-center gap-3 text-brand-dark hover:text-brand-sage font-black text-[12px] uppercase tracking-widest mb-12 transition-all group">
-                  <span className="group-hover:-translate-x-2 transition-transform text-xl">←</span> Volver al inicio
+          <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-16 animate-fadeIn">
+            <div className="bg-white p-6 md:p-16 rounded-[1.5rem] md:rounded-[2.5rem] shadow-2xl border border-brand-beige">
+                <button onClick={() => setSelectedCategoryId(null)} className="flex items-center gap-2 md:gap-3 text-brand-dark hover:text-brand-sage font-black text-[10px] md:text-[12px] uppercase tracking-widest mb-8 md:mb-12 transition-all group">
+                  <span className="group-hover:-translate-x-2 transition-transform text-lg md:text-xl">←</span> Volver al inicio
                 </button>
-                <div className="flex items-center gap-8 mb-16">
-                  <h2 className="text-4xl md:text-6xl font-black text-brand-dark uppercase tracking-tighter">
-                      {data.categories.find(c => c.id === selectedCategoryId)?.name}
+                <div className="flex items-center gap-4 md:gap-8 mb-8 md:mb-16">
+                  <h2 className="text-2xl md:text-6xl font-black text-brand-dark uppercase tracking-tighter leading-none">
+                      {selectedCategoryId === 'all' ? 'Nuestro Catálogo' : data.categories.find(c => c.id === selectedCategoryId)?.name}
                   </h2>
-                  <div className="h-1 flex-1 bg-brand-beige opacity-30 rounded-full"></div>
+                  <div className="h-0.5 md:h-1 flex-1 bg-brand-beige opacity-30 rounded-full"></div>
                 </div>
                 {filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10">
-                    {filteredProducts.map(product => <ProductCard key={product.id} product={product} onOpenSelector={setSelectingProduct} />)}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-10">
+                    {filteredProducts.map(product => (
+                      <ProductCard 
+                        key={product.id} 
+                        product={product} 
+                        isInCart={cart.some(item => item.productId === product.id)}
+                        onOpenSelector={(p) => {
+                          setSelectingProduct(p);
+                          // Pre-select designs already in cart for this product
+                          const currentDesigns = cart
+                            .filter(item => item.productId === p.id && item.selectedDesign)
+                            .map(item => item.selectedDesign!.id);
+                          setSelectedDesignIds(currentDesigns);
+                        }} 
+                      />
+                    ))}
                 </div>
                 ) : (
                   <div className="text-center py-40 bg-brand-white/50 rounded-[2rem] border border-dashed border-brand-beige">
@@ -283,8 +393,8 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
 
       {/* Selector de Tela / Detalles de Producto (Modal Optimizado) */}
       {selectingProduct && (
-          <div className="fixed inset-0 bg-brand-dark/70 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-              <div className="bg-white w-full max-w-xl rounded-[1.75rem] p-6 md:p-10 shadow-2xl border border-brand-beige overflow-hidden flex flex-col max-h-[95vh] animate-slideUp">
+          <div className="fixed inset-0 bg-brand-dark/70 backdrop-blur-md z-[200] flex items-center justify-center p-4 md:p-6 overflow-hidden" onClick={() => setSelectingProduct(null)}>
+              <div className="bg-white w-full max-w-xl rounded-[1.75rem] p-6 md:p-10 shadow-2xl border border-brand-beige flex flex-col max-h-[90vh] animate-slideUp relative" onClick={e => e.stopPropagation()}>
                   <div className="flex justify-between items-start mb-6">
                     <div>
                       <h3 className="text-2xl md:text-3xl font-black text-brand-dark uppercase tracking-tight leading-tight">{selectingProduct.name}</h3>
@@ -293,28 +403,42 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                     <button onClick={() => setSelectingProduct(null)} className="text-brand-dark hover:text-brand-red text-3xl transition-colors p-2 -mt-2 -mr-2">✕</button>
                   </div>
                   
-                  <div className="bg-brand-white/50 p-4 md:p-6 rounded-[1rem] border-l-4 border-brand-sage mb-6 flex-shrink-0">
-                    <p className="text-xs md:text-sm text-brand-dark/80 italic leading-relaxed">
-                      {selectingProduct.description || 'Artesanía pura diseñada con amor para acompañar el crecimiento de tu bebé.'}
-                    </p>
-                  </div>
-                  
-                  <div className="flex-1 overflow-y-auto mb-6 pr-2 custom-scrollbar">
-                      <label className="block text-[10px] md:text-[11px] font-black text-brand-dark uppercase tracking-[0.3em] mb-4 text-center">Selecciona un estampado:</label>
+                  <div className="flex-1 overflow-y-auto mb-6 pr-2 custom-scrollbar min-h-0">
+                      {selectingProduct.images && selectingProduct.images.length > 0 && (
+                        <div className="w-full rounded-[1.5rem] overflow-hidden mb-6 border border-brand-beige shadow-sm bg-brand-white flex-shrink-0 flex items-center justify-center bg-gray-50/30">
+                          <img src={selectingProduct.images[0]} className="max-w-full max-h-[40vh] md:max-h-[50vh] object-contain" alt={selectingProduct.name} referrerPolicy="no-referrer" />
+                        </div>
+                      )}
+                      
+                      <div className="bg-brand-white/50 p-4 md:p-6 rounded-[1rem] border-l-4 border-brand-sage mb-6 flex-shrink-0">
+                        <p className="text-xs md:text-sm text-brand-dark/80 italic leading-relaxed">
+                          {selectingProduct.description || 'Artesanía pura diseñada con amor para acompañar el crecimiento de tu bebé.'}
+                        </p>
+                      </div>
+
+                      <label className="block text-[10px] md:text-[11px] font-black text-brand-dark uppercase tracking-[0.3em] mb-4 text-center">Selecciona uno o varios estampados:</label>
                       {selectingProduct.designOptions && selectingProduct.designOptions.length > 0 ? (
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-5">
-                              {selectingProduct.designOptions.map(design => (
-                                  <button 
-                                    key={design.id} 
-                                    onClick={() => setSelectedDesignId(design.id)} 
-                                    className={`p-2 rounded-[1.25rem] border-2 transition-all group ${selectedDesignId === design.id ? 'border-brand-sage bg-brand-white shadow-lg scale-105' : 'border-brand-beige hover:border-brand-greige'}`}
-                                  >
-                                      <div className="aspect-square rounded-[1rem] overflow-hidden mb-2">
-                                        <img src={design.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={design.name} />
-                                      </div>
-                                      <span className="text-[9px] md:text-[10px] font-black block truncate text-center uppercase text-brand-dark">{design.name}</span>
-                                  </button>
-                              ))}
+                              {selectingProduct.designOptions.map(design => {
+                                  const isSelected = selectedDesignIds.includes(design.id);
+                                  return (
+                                    <button 
+                                      key={design.id} 
+                                      onClick={() => toggleDesignSelection(design.id)} 
+                                      className={`p-2 rounded-[1.25rem] border-2 transition-all group relative ${isSelected ? 'border-brand-sage bg-brand-white shadow-lg scale-105' : 'border-brand-beige hover:border-brand-greige'}`}
+                                    >
+                                        {isSelected && (
+                                          <div className="absolute top-1 right-1 z-10 bg-brand-sage text-white w-5 h-5 rounded-full flex items-center justify-center shadow-md">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
+                                          </div>
+                                        )}
+                                        <div className="aspect-square rounded-[1rem] overflow-hidden mb-2">
+                                          <img src={design.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={design.name} referrerPolicy="no-referrer" />
+                                        </div>
+                                        <span className="text-[9px] md:text-[10px] font-black block truncate text-center uppercase text-brand-dark">{design.name}</span>
+                                    </button>
+                                  );
+                              })}
                           </div>
                       ) : (
                         <div className="text-center py-12 bg-brand-white/50 rounded-[1.5rem] border border-dashed border-brand-beige">
@@ -324,8 +448,33 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                   </div>
                   
                   <div className="flex flex-col md:flex-row gap-4 mt-auto">
-                      <button onClick={() => setSelectingProduct(null)} className="md:flex-1 py-3 font-black text-brand-dark/40 uppercase text-[9px] tracking-widest hover:text-brand-dark transition-colors order-2 md:order-1">Cancelar</button>
-                      <button onClick={addToCart} className="md:flex-[3] bg-brand-sage text-white py-4 md:py-5 rounded-[1.5rem] font-black text-[11px] md:text-[13px] uppercase tracking-[0.25em] shadow-xl hover:bg-brand-dark hover:scale-[1.02] transition-all active:scale-95 order-1 md:order-2">Añadir al Carrito</button>
+                      <button onClick={() => { setSelectingProduct(null); setSelectedDesignIds([]); }} className="md:flex-1 py-3 font-black text-brand-dark/40 uppercase text-[9px] tracking-widest hover:text-brand-dark transition-colors order-2 md:order-1">Cancelar</button>
+                      
+                      {cart.some(item => item.productId === selectingProduct.id) ? (
+                        <div className="md:flex-[3] flex flex-col sm:flex-row gap-3 order-1 md:order-2">
+                           <button 
+                            onClick={() => removeFromCart(selectingProduct.id)}
+                            className="flex-1 py-4 md:py-5 rounded-[1.5rem] font-black text-[11px] md:text-[13px] uppercase tracking-[0.2em] bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 transition-all active:scale-95"
+                          >
+                            Quitar
+                          </button>
+                          <button 
+                            onClick={addToCart} 
+                            disabled={selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && selectedDesignIds.length === 0}
+                            className={`flex-[2] py-4 md:py-5 rounded-[1.5rem] font-black text-[11px] md:text-[13px] uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 ${selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && selectedDesignIds.length === 0 ? 'bg-brand-beige text-brand-dark/30 cursor-not-allowed' : 'bg-brand-sage text-white hover:bg-brand-dark hover:scale-[1.02]'}`}
+                          >
+                            {selectingProduct.designOptions && selectingProduct.designOptions.length > 0 ? 'Actualizar' : 'Añadido'}
+                          </button>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={addToCart} 
+                          disabled={selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && selectedDesignIds.length === 0}
+                          className={`md:flex-[3] py-4 md:py-5 rounded-[1.5rem] font-black text-[11px] md:text-[13px] uppercase tracking-[0.25em] shadow-xl transition-all active:scale-95 order-1 md:order-2 ${selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && selectedDesignIds.length === 0 ? 'bg-brand-beige text-brand-dark/30 cursor-not-allowed' : 'bg-brand-sage text-white hover:bg-brand-dark hover:scale-[1.02]'}`}
+                        >
+                          {selectedDesignIds.length > 1 ? `Añadir ${selectedDesignIds.length} Variantes` : 'Añadir al Carrito'}
+                        </button>
+                      )}
                   </div>
               </div>
           </div>
@@ -348,7 +497,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                      return (
                        <div key={idx} className="flex gap-4 md:gap-6 items-center animate-fadeIn bg-brand-white/30 p-3 md:p-4 rounded-[1.25rem] border border-brand-white hover:border-brand-beige transition-all group">
                          <div className="w-16 h-16 md:w-20 md:h-20 bg-brand-white rounded-[1rem] overflow-hidden flex-shrink-0 border border-brand-beige shadow-sm">
-                           <img src={item.selectedDesign?.image || (p?.images && p.images[0])} className="w-full h-full object-cover" alt="item" />
+                           <img src={item.selectedDesign?.image || (p?.images && p.images[0])} className="w-full h-full object-cover" alt="item" referrerPolicy="no-referrer" />
                          </div>
                          <div className="flex-1 min-w-0">
                             <p className="text-xs md:text-sm font-black text-brand-dark truncate uppercase tracking-tight">{p?.name}</p>
@@ -440,6 +589,9 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
         </div>
         <div className="max-w-6xl mx-auto border-t border-white/10 pt-8 text-center text-white/40 text-xs font-bold uppercase tracking-widest">
           © {new Date().getFullYear()} {data.settings.brandName}. Todos los derechos reservados.
+          <div className="mt-4">
+            <Link to="/admin" className="text-white/10 hover:text-brand-sage transition-colors text-[8px]">Acceso Staff</Link>
+          </div>
         </div>
       </footer>
     </div>
