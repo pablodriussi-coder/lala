@@ -33,7 +33,7 @@ const ProductCard: React.FC<{
             )}
             <div className="aspect-[4/5] bg-brand-white relative overflow-hidden flex items-center justify-center">
                 {hasImages ? (
-                    <img src={product.images![0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={product.name} referrerPolicy="no-referrer" />
+                    <img src={product.images![0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={product.name} referrerPolicy="no-referrer" loading="lazy" decoding="async" />
                 ) : <div className="text-4xl md:text-5xl grayscale opacity-10 select-none">🍼</div>}
                 <div className="absolute top-2 left-2 md:top-3 md:left-3 bg-brand-dark/80 backdrop-blur-sm text-white px-2 py-0.5 md:px-3 md:py-1 rounded-full font-black text-[9px] md:text-[10px] shadow-lg">${product.price.toFixed(0)}</div>
             </div>
@@ -213,7 +213,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
       {/* Hero Banner Section */}
       <div className="relative w-full h-[60vh] md:h-[80vh] overflow-hidden flex items-center justify-center">
         {data.settings.shopBannerImage ? (
-          <img src={data.settings.shopBannerImage} className="absolute inset-0 w-full h-full object-cover object-left lg:object-center" alt="Banner" referrerPolicy="no-referrer" />
+          <img src={data.settings.shopBannerImage} className="absolute inset-0 w-full h-full object-cover object-left lg:object-center" alt="Banner" referrerPolicy="no-referrer" fetchPriority="high" />
         ) : (
           <div className="absolute inset-0 bg-brand-beige" />
         )}
@@ -221,7 +221,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
         {/* Overlay Logo/Brand Name */}
         <div className="relative z-10 flex flex-col items-center justify-center p-6">
           {data.settings.shopLogo ? (
-            <img src={data.settings.shopLogo} alt={data.settings.brandName} className="max-h-24 md:max-h-36 w-auto object-contain drop-shadow-md" referrerPolicy="no-referrer" />
+            <img src={data.settings.shopLogo} alt={data.settings.brandName} className="max-h-24 md:max-h-36 w-auto object-contain drop-shadow-md" referrerPolicy="no-referrer" fetchPriority="high" />
           ) : (
             <h1 className="text-5xl md:text-8xl font-black text-brand-dark tracking-tighter text-center drop-shadow-md">
               {data.settings.brandName}
@@ -257,7 +257,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                         {data.categories.map(cat => (
                         <button key={cat.id} onClick={() => setSelectedCategoryId(cat.id)} className="flex flex-col items-center group active:scale-95 transition-transform">
                             <div className="aspect-square w-full rounded-3xl overflow-hidden mb-4 bg-white shadow-lg">
-                            {cat.image ? <img src={cat.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={cat.name} referrerPolicy="no-referrer" /> : <div className="w-full h-full flex items-center justify-center text-4xl grayscale opacity-10">🎀</div>}
+                            {cat.image ? <img src={cat.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={cat.name} referrerPolicy="no-referrer" loading="lazy" decoding="async" /> : <div className="w-full h-full flex items-center justify-center text-4xl grayscale opacity-10">🎀</div>}
                             </div>
                             <span className="text-sm font-bold text-white uppercase tracking-wider text-center px-1">{cat.name}</span>
                         </button>
@@ -279,7 +279,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                          <Link to="/showroom" key={entry.id} className="bg-white rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all group overflow-hidden flex flex-col h-full">
                             <div className="aspect-video bg-gray-100 rounded-2xl overflow-hidden mb-6 relative">
                                {entry.image ? (
-                                 <img src={entry.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={entry.title} referrerPolicy="no-referrer" />
+                                 <img src={entry.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={entry.title} referrerPolicy="no-referrer" loading="lazy" decoding="async" />
                                ) : <div className="w-full h-full flex items-center justify-center text-3xl grayscale opacity-10">✨</div>}
                             </div>
                             <div className="flex-1 flex flex-col">
@@ -295,7 +295,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
             )}
 
             {/* Contactanos */}
-            <div className="bg-[#b59a7f] py-16 px-6">
+            <div className="bg-[#b59a7f] py-16 px-6" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 500px' }}>
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-12">
                        <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tight">Contactanos</h3>
@@ -406,7 +406,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                   <div className="flex-1 overflow-y-auto mb-6 pr-2 custom-scrollbar min-h-0">
                       {selectingProduct.images && selectingProduct.images.length > 0 && (
                         <div className="w-full rounded-[1.5rem] overflow-hidden mb-6 border border-brand-beige shadow-sm bg-brand-white flex-shrink-0 flex items-center justify-center bg-gray-50/30">
-                          <img src={selectingProduct.images[0]} className="max-w-full max-h-[40vh] md:max-h-[50vh] object-contain" alt={selectingProduct.name} referrerPolicy="no-referrer" />
+                          <img src={selectingProduct.images[0]} className="max-w-full max-h-[40vh] md:max-h-[50vh] object-contain" alt={selectingProduct.name} referrerPolicy="no-referrer" loading="eager" decoding="sync" />
                         </div>
                       )}
                       
@@ -433,7 +433,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                                           </div>
                                         )}
                                         <div className="aspect-square rounded-[1rem] overflow-hidden mb-2">
-                                          <img src={design.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={design.name} referrerPolicy="no-referrer" />
+                                          <img src={design.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={design.name} referrerPolicy="no-referrer" loading="lazy" decoding="async" />
                                         </div>
                                         <span className="text-[9px] md:text-[10px] font-black block truncate text-center uppercase text-brand-dark">{design.name}</span>
                                     </button>
@@ -540,7 +540,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
       </div>
 
       {/* Footer */}
-      <footer className="bg-brand-dark text-white pt-16 pb-8 px-6 mt-20">
+      <footer className="bg-brand-dark text-white pt-16 pb-8 px-6 mt-20" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 400px' }}>
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           <div>
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-4">{data.settings.brandName}</h3>

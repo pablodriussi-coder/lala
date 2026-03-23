@@ -48,7 +48,7 @@ const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
           <span className="group-hover:-translate-x-2 transition-transform">←</span> Volver a la Tienda
         </Link>
         {data.settings.shopLogo ? (
-            <img src={data.settings.shopLogo} className="h-10 md:h-14 w-auto object-contain" alt="Logo" />
+            <img src={data.settings.shopLogo} className="h-10 md:h-14 w-auto object-contain" alt="Logo" fetchPriority="high" />
         ) : (
             <h1 className="text-xl font-black text-brand-dark tracking-tighter uppercase">{data.settings.brandName} ★</h1>
         )}
@@ -93,7 +93,7 @@ const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
             >
               <div className="aspect-[16/10] relative overflow-hidden bg-brand-white">
                 {entry.image ? (
-                  <img src={entry.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={entry.title} />
+                  <img src={entry.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={entry.title} loading="lazy" decoding="async" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-5xl grayscale opacity-10">🎨</div>
                 )}
@@ -145,7 +145,7 @@ const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
       </div>
 
       {/* Footer */}
-      <footer className="bg-brand-dark text-white pt-16 pb-8 px-6">
+      <footer className="bg-brand-dark text-white pt-16 pb-8 px-6" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 400px' }}>
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           <div>
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-4">{data.settings.brandName}</h3>
@@ -214,7 +214,7 @@ const ShowroomView: React.FC<ShowroomViewProps> = ({ data }) => {
             <div className="overflow-y-auto flex-1">
               {selectedEntry.image && (
                 <div className="w-full h-64 md:h-96 relative">
-                  <img src={selectedEntry.image} className="w-full h-full object-cover" alt={selectedEntry.title} />
+                  <img src={selectedEntry.image} className="w-full h-full object-cover" alt={selectedEntry.title} loading="eager" decoding="sync" />
                   <div className="absolute top-6 left-6">
                     <span className="bg-white/95 backdrop-blur-md text-brand-dark px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg border border-brand-beige">
                       {selectedEntry.type}

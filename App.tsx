@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { fetchAllData, syncMaterialsBatch, syncClientsBatch, syncTransactionsBatch, syncQuote, syncProduct, syncSettings, syncCategory } from './store';
 import { AppData, Category, Product } from './types';
@@ -7,21 +7,28 @@ import { ICONS } from './constants';
 import { supabase } from './supabaseClient';
 import { Session } from '@supabase/supabase-js';
 
-// Vistas del Manager
-import Dashboard from './views/Dashboard';
-import MaterialsManager from './views/MaterialsManager';
-import ProductsManager from './views/ProductsManager';
-import QuotesManager from './views/QuotesManager';
-import ClientsManager from './views/ClientsManager';
-import AccountingManager from './views/AccountingManager';
-import QuickCalculator from './views/QuickCalculator';
-import CategoriesManager from './views/CategoriesManager';
-import ShowroomManager from './views/ShowroomManager';
-import Login from './views/Login';
+// Vistas del Manager (Lazy Loaded)
+const Dashboard = lazy(() => import('./views/Dashboard'));
+const MaterialsManager = lazy(() => import('./views/MaterialsManager'));
+const ProductsManager = lazy(() => import('./views/ProductsManager'));
+const QuotesManager = lazy(() => import('./views/QuotesManager'));
+const ClientsManager = lazy(() => import('./views/ClientsManager'));
+const AccountingManager = lazy(() => import('./views/AccountingManager'));
+const QuickCalculator = lazy(() => import('./views/QuickCalculator'));
+const CategoriesManager = lazy(() => import('./views/CategoriesManager'));
+const ShowroomManager = lazy(() => import('./views/ShowroomManager'));
+const Login = lazy(() => import('./views/Login'));
 
-// Vistas Públicas
-import CustomerShop from './views/CustomerShop';
-import ShowroomView from './views/ShowroomView';
+// Vistas Públicas (Lazy Loaded)
+const CustomerShop = lazy(() => import('./views/CustomerShop'));
+const ShowroomView = lazy(() => import('./views/ShowroomView'));
+
+const LoadingScreen: React.FC<{ message?: string }> = ({ message = "Lala accesorios" }) => (
+  <div className="h-screen w-screen flex flex-col items-center justify-center bg-brand-white">
+    <div className="w-12 h-12 border-4 border-brand-beige border-t-brand-sage rounded-full animate-spin mb-4"></div>
+    <h1 className="text-xl font-bold text-brand-dark italic">{message}</h1>
+  </div>
+);
 
 const AppContent: React.FC = () => {
   const [data, setData] = useState<AppData | null>(null);
@@ -60,18 +67,17 @@ const AppContent: React.FC = () => {
   }, [location.pathname]);
 
   if (loading || !data) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-brand-white">
-        <div className="w-12 h-12 border-4 border-brand-beige border-t-brand-sage rounded-full animate-spin mb-4"></div>
-        <h1 className="text-xl font-bold text-brand-dark italic">Lala accesorios</h1>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   const isAdminPath = location.pathname.startsWith('/admin');
 
   if (isAdminPath && !session) {
-    return <Login />;
+    return (
+      <Suspense fallback={<LoadingScreen message="Cargando acceso..." />}>
+        <Login />
+      </Suspense>
+    );
   }
 
   const handleUpdate = (updater: (prev: AppData) => AppData) => {
@@ -170,22 +176,24 @@ const AppContent: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto print:overflow-visible print:h-auto">
         <div className={isAdminPath ? "p-6 md:p-10 max-w-7xl mx-auto print:p-0 print:max-w-none" : ""}>
-          <Routes>
-            <Route path="/" element={<CustomerShop data={data} />} />
-            <Route path="/showroom" element={<ShowroomView data={data} />} />
+          <Suspense fallback={<LoadingScreen message="Cargando sección..." />}>
+            <Routes>
+              <Route path="/" element={<CustomerShop data={data} />} />
+              <Route path="/showroom" element={<ShowroomView data={data} />} />
 
-            <Route path="/admin" element={<Dashboard data={data} onUpdateSettings={updateSettings} />} />
-            <Route path="/admin/categories" element={<CategoriesManager data={data} updateData={handleUpdate} />} />
-            <Route path="/admin/products" element={<ProductsManager data={data} updateData={handleUpdate} />} />
-            <Route path="/admin/showroom" element={<ShowroomManager data={data} updateData={handleUpdate} />} />
-            <Route path="/admin/materials" element={<MaterialsManager data={data} updateData={handleUpdate} />} />
-            <Route path="/admin/quotes" element={<QuotesManager data={data} updateData={handleUpdate} />} />
-            <Route path="/admin/clients" element={<ClientsManager data={data} updateData={handleUpdate} />} />
-            <Route path="/admin/accounting" element={<AccountingManager data={data} updateData={handleUpdate} />} />
-            <Route path="/admin/calculator" element={<QuickCalculator />} />
+              <Route path="/admin" element={<Dashboard data={data} onUpdateSettings={updateSettings} />} />
+              <Route path="/admin/categories" element={<CategoriesManager data={data} updateData={handleUpdate} />} />
+              <Route path="/admin/products" element={<ProductsManager data={data} updateData={handleUpdate} />} />
+              <Route path="/admin/showroom" element={<ShowroomManager data={data} updateData={handleUpdate} />} />
+              <Route path="/admin/materials" element={<MaterialsManager data={data} updateData={handleUpdate} />} />
+              <Route path="/admin/quotes" element={<QuotesManager data={data} updateData={handleUpdate} />} />
+              <Route path="/admin/clients" element={<ClientsManager data={data} updateData={handleUpdate} />} />
+              <Route path="/admin/accounting" element={<AccountingManager data={data} updateData={handleUpdate} />} />
+              <Route path="/admin/calculator" element={<QuickCalculator />} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </div>
       </main>
     </div>
