@@ -2,4 +2,4 @@ User-agent: *
 Disallow: /admin/
 Disallow: /#/admin/
 
-Sitemap: https://lalawi.com/sitemap.xml
+Sitemap: https://www.lalawi.com/sitemap.xml

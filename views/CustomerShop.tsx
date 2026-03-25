@@ -318,7 +318,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-lg">Email</h4>
-                                    <p className="text-white/80">contacto@lalaaccesorios.com</p>
+                                    <p className="text-white/80">{data.settings.shopEmail || 'contacto@lalaaccesorios.com'}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">

@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import { AppData, Quote, QuoteItem, ProductMaterialRequirement, MaterialUnit } from '../types';
 import { ICONS } from '../constants';
 import { generateMarketingText } from '../services/geminiService';
-import { syncQuote } from '../store';
+import { syncQuote, deleteFromSupabase } from '../store';
 import * as XLSX from 'xlsx';
 
 interface QuotesManagerProps {
@@ -135,6 +135,16 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
     window.print();
   };
 
+  const handleDelete = async (id: string) => {
+    if (confirm('¿Estás seguro de eliminar este presupuesto permanentemente?')) {
+      updateData(prev => ({
+        ...prev,
+        quotes: prev.quotes.filter(q => q.id !== id)
+      }));
+      await deleteFromSupabase('quotes', id);
+    }
+  };
+
   const BrandLogo = () => {
     // Si hay un logo cargado en los ajustes, lo usamos.
     if (data.settings.shopLogo) {
@@ -225,6 +235,7 @@ const QuotesManager: React.FC<QuotesManagerProps> = ({ data, updateData }) => {
                     <div className="flex gap-2">
                         <button onClick={() => openPreview(quote)} className="p-3 bg-brand-beige text-brand-dark rounded-xl hover:bg-brand-sage hover:text-white transition-all">📄</button>
                         <button onClick={() => openEdit(quote)} className="p-3 bg-brand-white border border-brand-beige text-brand-dark rounded-xl hover:bg-brand-beige transition-all">✏️</button>
+                        <button onClick={() => handleDelete(quote.id)} className="p-3 bg-brand-white border border-brand-beige text-brand-red rounded-xl hover:bg-brand-red hover:text-white transition-all">✕</button>
                     </div>
                 </div>
               </div>
