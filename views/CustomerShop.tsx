@@ -157,28 +157,15 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
   if (!data || !data.categories) return <div className="min-h-screen bg-brand-white flex items-center justify-center">Cargando tienda...</div>;
 
   return (
-    <div className="min-h-screen bg-brand-white pb-32 animate-fadeIn font-['Quicksand'] relative overflow-x-hidden">
-      <style>{`
+    <>
+      <div className="min-h-screen bg-brand-white pb-32 animate-fadeIn font-['Quicksand'] relative overflow-x-hidden">
+        <style>{`
         @keyframes bounce-subtle {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.15); }
         }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
         .animate-bounce-subtle {
           animation: bounce-subtle 0.5s ease-in-out;
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.4s ease-out forwards;
-        }
-        .animate-slideUp {
-          animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
       
@@ -391,6 +378,63 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
         )}
       </div>
 
+      {/* Footer */}
+      <footer className="bg-brand-dark text-white pt-16 pb-8 px-6 mt-20" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 400px' }}>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+          <div>
+            <h3 className="text-2xl font-black uppercase tracking-tighter mb-4">{data.settings.brandName}</h3>
+            <p className="text-white/60 text-sm leading-relaxed max-w-xs">{data.settings.shopBannerText}</p>
+          </div>
+          
+          <div>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-sage mb-6">Contacto</h4>
+            <ul className="space-y-4 text-sm text-white/80">
+              {data.settings.shopEmail && (
+                <li className="flex items-center gap-3">
+                  <span className="text-brand-sage">✉</span>
+                  <a href={`mailto:${data.settings.shopEmail}`} className="hover:text-white transition-colors">{data.settings.shopEmail}</a>
+                </li>
+              )}
+              {data.settings.whatsappNumber && (
+                <li className="flex items-center gap-3">
+                  <span className="text-brand-sage">✆</span>
+                  <a href={`https://wa.me/${data.settings.whatsappNumber}`} target="_blank" rel="noreferrer" className="hover:text-white transition-colors">+{data.settings.whatsappNumber}</a>
+                </li>
+              )}
+              {data.settings.shopAddress && (
+                <li className="flex items-start gap-3">
+                  <span className="text-brand-sage mt-1">📍</span>
+                  <span className="leading-relaxed">{data.settings.shopAddress}</span>
+                </li>
+              )}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-sage mb-6">Redes Sociales</h4>
+            <div className="flex gap-4">
+              {data.settings.instagramUrl && (
+                <a href={data.settings.instagramUrl} target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand-sage hover:text-brand-dark transition-all">
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.332 3.608 1.308.975.975 1.245 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.332 2.633-1.308 3.608-.975.975-2.242 1.245-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.332-3.608-1.308-.975-.975-1.245-2.242-1.308-3.608-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.062-1.366.332-2.633 1.308-3.608.975-.975 2.242-1.245 3.608-1.308 1.266-.058-1.646-.07 4.85-.07zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948s.014 3.667.072 4.947c.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072s3.667-.014 4.947-.072c4.358-.2 6.78-2.618 6.98-6.98.058-1.281.072-1.689.072-4.948s-.014-3.667-.072-4.947c-.2-4.358-2.618-6.78-6.98-6.98-1.281-.058-1.689-.072-4.948-.072zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.162 6.162 6.162 6.162-2.759 6.162-6.162-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4s1.791-4 4-4 4 1.791 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                </a>
+              )}
+              {data.settings.facebookUrl && (
+                <a href={data.settings.facebookUrl} target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand-sage hover:text-brand-dark transition-all">
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="max-w-6xl mx-auto border-t border-white/10 pt-8 text-center text-white/40 text-xs font-bold uppercase tracking-widest">
+          © {new Date().getFullYear()} {data.settings.brandName}. Todos los derechos reservados.
+          <div className="mt-4">
+            <Link to="/admin" className="text-white/10 hover:text-brand-sage transition-colors text-[8px]">Acceso Staff</Link>
+          </div>
+        </div>
+      </footer>
+      </div>
+
       {/* Selector de Tela / Detalles de Producto (Modal Optimizado) */}
       {selectingProduct && (
           <div className="fixed inset-0 bg-brand-dark/70 backdrop-blur-md z-[200] flex items-center justify-center p-4 md:p-6 overflow-hidden" onClick={() => setSelectingProduct(null)}>
@@ -538,63 +582,7 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
            </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-brand-dark text-white pt-16 pb-8 px-6 mt-20" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 400px' }}>
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
-          <div>
-            <h3 className="text-2xl font-black uppercase tracking-tighter mb-4">{data.settings.brandName}</h3>
-            <p className="text-white/60 text-sm leading-relaxed max-w-xs">{data.settings.shopBannerText}</p>
-          </div>
-          
-          <div>
-            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-sage mb-6">Contacto</h4>
-            <ul className="space-y-4 text-sm text-white/80">
-              {data.settings.shopEmail && (
-                <li className="flex items-center gap-3">
-                  <span className="text-brand-sage">✉</span>
-                  <a href={`mailto:${data.settings.shopEmail}`} className="hover:text-white transition-colors">{data.settings.shopEmail}</a>
-                </li>
-              )}
-              {data.settings.whatsappNumber && (
-                <li className="flex items-center gap-3">
-                  <span className="text-brand-sage">✆</span>
-                  <a href={`https://wa.me/${data.settings.whatsappNumber}`} target="_blank" rel="noreferrer" className="hover:text-white transition-colors">+{data.settings.whatsappNumber}</a>
-                </li>
-              )}
-              {data.settings.shopAddress && (
-                <li className="flex items-start gap-3">
-                  <span className="text-brand-sage mt-1">📍</span>
-                  <span className="leading-relaxed">{data.settings.shopAddress}</span>
-                </li>
-              )}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-sage mb-6">Redes Sociales</h4>
-            <div className="flex gap-4">
-              {data.settings.instagramUrl && (
-                <a href={data.settings.instagramUrl} target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand-sage hover:text-brand-dark transition-all">
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.332 3.608 1.308.975.975 1.245 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.332 2.633-1.308 3.608-.975.975-2.242 1.245-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.332-3.608-1.308-.975-.975-1.245-2.242-1.308-3.608-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.062-1.366.332-2.633 1.308-3.608.975-.975 2.242-1.245 3.608-1.308 1.266-.058-1.646-.07 4.85-.07zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948s.014 3.667.072 4.947c.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072s3.667-.014 4.947-.072c4.358-.2 6.78-2.618 6.98-6.98.058-1.281.072-1.689.072-4.948s-.014-3.667-.072-4.947c-.2-4.358-2.618-6.78-6.98-6.98-1.281-.058-1.689-.072-4.948-.072zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.162 6.162 6.162 6.162-2.759 6.162-6.162-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4s1.791-4 4-4 4 1.791 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-                </a>
-              )}
-              {data.settings.facebookUrl && (
-                <a href={data.settings.facebookUrl} target="_blank" rel="noreferrer" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-brand-sage hover:text-brand-dark transition-all">
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="max-w-6xl mx-auto border-t border-white/10 pt-8 text-center text-white/40 text-xs font-bold uppercase tracking-widest">
-          © {new Date().getFullYear()} {data.settings.brandName}. Todos los derechos reservados.
-          <div className="mt-4">
-            <Link to="/admin" className="text-white/10 hover:text-brand-sage transition-colors text-[8px]">Acceso Staff</Link>
-          </div>
-        </div>
-      </footer>
-    </div>
+    </>
   );
 };
 

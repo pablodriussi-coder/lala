@@ -12,6 +12,8 @@ interface MaterialsManagerProps {
 
 const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkUpdateModalOpen, setIsBulkUpdateModalOpen] = useState(false);
+  const [bulkPercentage, setBulkPercentage] = useState<number>(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<Partial<Material>>({
@@ -59,6 +61,32 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
     setEditingId(material.id);
     setFormData(material);
     setIsModalOpen(true);
+  };
+
+  const handleBulkUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (bulkPercentage === 0) {
+      setIsBulkUpdateModalOpen(false);
+      return;
+    }
+
+    if (confirm(`¿Estás segura de aplicar un ajuste de ${bulkPercentage > 0 ? '+' : ''}${bulkPercentage}% a todos los materiales?`)) {
+      updateData(prev => {
+        const updatedMaterials = prev.materials.map(m => ({
+          ...m,
+          costPerUnit: Number((m.costPerUnit * (1 + bulkPercentage / 100)).toFixed(2))
+        }));
+        
+        syncMaterialsBatch(updatedMaterials);
+        
+        return {
+          ...prev,
+          materials: updatedMaterials
+        };
+      });
+      setIsBulkUpdateModalOpen(false);
+      setBulkPercentage(0);
+    }
   };
 
   const deleteMaterial = async (id: string) => {
@@ -127,8 +155,9 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
+    <>
+      <div className="space-y-8 animate-fadeIn">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Insumos</h2>
           <p className="text-brand-greige font-medium">Telas, hilos, broches y rellenos</p>
@@ -137,6 +166,7 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
           <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={importFromExcel} className="hidden" />
           <button onClick={() => fileInputRef.current?.click()} className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm">📥 Importar Excel</button>
           <button onClick={exportToExcel} className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm">📤 Exportar Excel</button>
+          <button onClick={() => setIsBulkUpdateModalOpen(true)} className="bg-brand-white hover:bg-brand-beige text-brand-dark px-6 py-4 rounded-2xl border border-brand-beige transition-all font-bold text-sm">📈 Ajuste Masivo %</button>
           <button onClick={() => setIsModalOpen(true)} className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg shadow-brand-sage/20 transition-all font-bold group">
             <ICONS.Add />
             <span className="group-hover:translate-x-1 transition-transform">Nuevo Material</span>
@@ -179,10 +209,11 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
           </tbody>
         </table>
       </div>
+      </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-brand-dark/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-brand-beige animate-slideUp">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-brand-beige animate-slideUp max-h-[90vh] overflow-y-auto">
             <div className="p-10 space-y-8">
               <h3 className="text-2xl font-bold text-brand-dark">{editingId ? 'Actualizar' : 'Registrar'} Material</h3>
               <form onSubmit={handleSave} className="space-y-6">
@@ -213,7 +244,32 @@ const MaterialsManager: React.FC<MaterialsManagerProps> = ({ data, updateData })
           </div>
         </div>
       )}
-    </div>
+
+      {isBulkUpdateModalOpen && (
+        <div className="fixed inset-0 bg-brand-dark/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-brand-beige animate-slideUp max-h-[90vh] overflow-y-auto">
+            <div className="p-10 space-y-8">
+              <h3 className="text-2xl font-bold text-brand-dark">Ajuste Masivo de Precios</h3>
+              <p className="text-sm text-brand-greige">Aumenta o disminuye el costo de <strong>todos</strong> los materiales por un porcentaje.</p>
+              <form onSubmit={handleBulkUpdate} className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Porcentaje (%)</label>
+                  <div className="relative">
+                    <input type="number" step="0.1" required value={bulkPercentage || ''} onChange={e => setBulkPercentage(Number(e.target.value))} className="w-full px-5 py-4 rounded-2xl bg-brand-white border border-brand-beige outline-none font-bold text-brand-dark" placeholder="Ej: 15 o -10" />
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-brand-greige font-bold">%</span>
+                  </div>
+                  <p className="text-[10px] text-brand-greige mt-2 italic">Usa valores positivos para aumentar (ej: 15) o negativos para disminuir (ej: -10).</p>
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <button type="button" onClick={() => { setIsBulkUpdateModalOpen(false); setBulkPercentage(0); }} className="flex-1 py-4 text-brand-greige font-bold">Cancelar</button>
+                  <button type="submit" className="flex-[2] bg-brand-sage text-white py-4 rounded-2xl font-bold hover:bg-brand-dark transition-all">Aplicar Ajuste</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

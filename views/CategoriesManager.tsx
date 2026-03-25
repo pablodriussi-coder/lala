@@ -92,8 +92,9 @@ const CategoriesManager: React.FC<CategoriesManagerProps> = ({ data, updateData 
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm">
+    <>
+      <div className="space-y-8 animate-fadeIn">
+        <div className="flex justify-between items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark">Categorías</h2>
           <p className="text-brand-greige font-medium">Organiza tu catálogo para los clientes</p>
@@ -119,12 +120,14 @@ const CategoriesManager: React.FC<CategoriesManagerProps> = ({ data, updateData 
           </div>
         ))}
       </div>
+      </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-brand-dark/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl border border-brand-beige animate-slideUp">
-            <h3 className="text-xl font-bold text-brand-dark mb-6">{editingId ? 'Editar' : 'Nueva'} Categoría</h3>
-            <div className="space-y-6">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl border border-brand-beige animate-slideUp max-h-[90vh] overflow-y-auto">
+            <div className="p-8">
+              <h3 className="text-xl font-bold text-brand-dark mb-6">{editingId ? 'Editar' : 'Nueva'} Categoría</h3>
+              <div className="space-y-6">
               <div>
                 <label className="block text-[10px] font-black text-brand-greige uppercase tracking-widest mb-2">Nombre</label>
                 <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-5 py-3 rounded-xl bg-brand-white border border-brand-beige outline-none font-bold" />
@@ -141,10 +144,11 @@ const CategoriesManager: React.FC<CategoriesManagerProps> = ({ data, updateData 
                 <button onClick={handleSave} className="flex-[2] bg-brand-sage text-white py-3 rounded-xl font-bold">Guardar</button>
               </div>
             </div>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

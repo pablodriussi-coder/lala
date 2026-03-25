@@ -100,40 +100,42 @@ const ShowroomManager: React.FC<ShowroomManagerProps> = ({ data, updateData }) =
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Showroom & Blog</h2>
-          <p className="text-brand-dark/60 font-medium">Gestión de actividades, clases y artículos del blog</p>
+    <>
+      <div className="space-y-8 animate-fadeIn">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Showroom & Blog</h2>
+            <p className="text-brand-dark/60 font-medium">Gestión de actividades, clases y artículos del blog</p>
+          </div>
+          <button onClick={() => setIsModalOpen(true)} className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg transition-all font-bold">
+            <ICONS.Add />
+            <span>Nueva Entrada</span>
+          </button>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="bg-brand-sage hover:bg-brand-dark text-white px-8 py-4 rounded-2xl flex items-center gap-2 shadow-lg transition-all font-bold">
-          <ICONS.Add />
-          <span>Nueva Entrada</span>
-        </button>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {data.showroomEntries.map(entry => (
-          <div key={entry.id} className="bg-white rounded-[2rem] shadow-sm border border-brand-beige overflow-hidden flex flex-col group hover:shadow-xl transition-all">
-            <div className="h-40 bg-brand-white relative overflow-hidden flex items-center justify-center">
-              {entry.image ? (
-                <img src={entry.image} className="w-full h-full object-cover" alt={entry.title} />
-              ) : <span className="text-4xl grayscale opacity-10">📖</span>}
-              <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm text-brand-dark px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest">{entry.type}</div>
-            </div>
-            <div className="p-6 flex-1 flex flex-col">
-              <h3 className="text-lg font-bold text-brand-dark mb-1 line-clamp-1">{entry.title}</h3>
-              <p className="text-brand-dark/70 text-[11px] line-clamp-2 mb-4 italic flex-1">{entry.content}</p>
-              <div className="flex justify-between items-center mt-auto">
-                <span className="text-[9px] font-black uppercase text-brand-greige">{new Date(entry.date).toLocaleDateString()}</span>
-                <div className="flex gap-2">
-                  <button onClick={() => { setEditingId(entry.id); setFormData(entry); setIsModalOpen(true); }} className="text-brand-sage font-black text-[10px] uppercase hover:underline">Editar</button>
-                  <button onClick={() => removeEntry(entry.id)} className="text-brand-red font-black text-[10px] uppercase hover:underline">Borrar</button>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {data.showroomEntries.map(entry => (
+            <div key={entry.id} className="bg-white rounded-[2rem] shadow-sm border border-brand-beige overflow-hidden flex flex-col group hover:shadow-xl transition-all">
+              <div className="h-40 bg-brand-white relative overflow-hidden flex items-center justify-center">
+                {entry.image ? (
+                  <img src={entry.image} className="w-full h-full object-cover" alt={entry.title} />
+                ) : <span className="text-4xl grayscale opacity-10">📖</span>}
+                <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm text-brand-dark px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest">{entry.type}</div>
+              </div>
+              <div className="p-6 flex-1 flex flex-col">
+                <h3 className="text-lg font-bold text-brand-dark mb-1 line-clamp-1">{entry.title}</h3>
+                <p className="text-brand-dark/70 text-[11px] line-clamp-2 mb-4 italic flex-1">{entry.content}</p>
+                <div className="flex justify-between items-center mt-auto">
+                  <span className="text-[9px] font-black uppercase text-brand-greige">{new Date(entry.date).toLocaleDateString()}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setEditingId(entry.id); setFormData(entry); setIsModalOpen(true); }} className="text-brand-sage font-black text-[10px] uppercase hover:underline">Editar</button>
+                    <button onClick={() => removeEntry(entry.id)} className="text-brand-red font-black text-[10px] uppercase hover:underline">Borrar</button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {isModalOpen && (
@@ -187,7 +189,7 @@ const ShowroomManager: React.FC<ShowroomManagerProps> = ({ data, updateData }) =
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

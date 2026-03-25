@@ -171,8 +171,9 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4 print:hidden">
+    <>
+      <div className="space-y-8 animate-fadeIn">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4 print:hidden">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Catálogo</h2>
           <p className="text-brand-dark/60 font-medium">Gestión de productos por categoría</p>
@@ -221,6 +222,7 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
             </div>
           );
         })}
+      </div>
       </div>
 
       {isModalOpen && (
@@ -409,8 +411,8 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
 
       {/* Vista de Impresión / PDF */}
       {isPrintViewOpen && (
-        <div className="fixed inset-0 bg-brand-dark/50 backdrop-blur-xl flex items-start justify-center z-[100] p-4 md:p-10 overflow-y-auto print:bg-white print:p-0 print:static print:z-0 print:overflow-visible print:block">
-          <div className="bg-white w-full max-w-[800px] shadow-2xl min-h-[1000px] flex flex-col print:shadow-none print:max-w-none print:w-full print:min-h-0 print:static">
+        <div className="fixed inset-0 bg-brand-dark/50 backdrop-blur-xl flex items-center justify-center z-[100] p-4 md:p-10 print:bg-white print:p-0 print:static print:z-0 print:block">
+          <div className="bg-white w-full max-w-[800px] shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col print:shadow-none print:max-w-none print:w-full print:max-h-none print:overflow-visible print:static">
             <div className="bg-brand-white p-6 flex justify-between items-center border-b border-brand-beige print:hidden sticky top-0 z-10">
               <button onClick={() => setIsPrintViewOpen(false)} className="text-brand-greige hover:text-brand-dark flex items-center gap-2">✕ Cerrar</button>
               <button onClick={() => window.print()} className="bg-brand-dark text-white px-6 py-2 rounded-xl font-bold hover:bg-brand-sage">Imprimir / Guardar PDF</button>
@@ -470,7 +472,7 @@ const ProductsManager: React.FC<ProductsManagerProps> = ({ data, updateData }) =
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

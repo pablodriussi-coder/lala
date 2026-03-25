@@ -103,8 +103,9 @@ const ClientsManager: React.FC<ClientsManagerProps> = ({ data, updateData }) => 
   );
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
+    <>
+      <div className="space-y-8 animate-fadeIn">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Directorio</h2>
           <p className="text-brand-greige font-medium">Gestión de datos de contacto de clientes</p>
@@ -210,10 +211,11 @@ const ClientsManager: React.FC<ClientsManagerProps> = ({ data, updateData }) => 
           </tbody>
         </table>
       </div>
+      </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-brand-dark/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md animate-slideUp border border-brand-beige">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md animate-slideUp border border-brand-beige max-h-[90vh] overflow-y-auto">
             <div className="p-10 space-y-8">
               <div className="flex justify-between items-center">
                 <h3 className="text-2xl font-bold text-brand-dark">Ficha de Cliente</h3>
@@ -267,7 +269,7 @@ const ClientsManager: React.FC<ClientsManagerProps> = ({ data, updateData }) => 
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

@@ -148,9 +148,10 @@ const AccountingManager: React.FC<AccountingManagerProps> = ({ data, updateData 
     .sort((a, b) => b.date - a.date);
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      {/* Header Finanzas */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
+    <>
+      <div className="space-y-8 animate-fadeIn">
+        {/* Header Finanzas */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] border border-brand-beige shadow-sm gap-4">
         <div>
           <h2 className="text-3xl font-bold text-brand-dark tracking-tight">Finanzas</h2>
           <p className="text-brand-greige font-medium">Contabilidad y Balance General</p>
@@ -261,16 +262,18 @@ const AccountingManager: React.FC<AccountingManagerProps> = ({ data, updateData 
           </div>
         </div>
       </div>
+      </div>
 
       {/* Modal Transacción */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-brand-dark/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md p-10 space-y-8 animate-slideUp border border-brand-beige">
-            <div className="flex justify-between items-center">
-              <h3 className="text-2xl font-bold text-brand-dark">Registrar Movimiento</h3>
-              <span className="text-brand-red text-xl">★</span>
-            </div>
-            <form onSubmit={handleSave} className="space-y-6">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md animate-slideUp border border-brand-beige max-h-[90vh] overflow-y-auto">
+            <div className="p-10 space-y-8">
+              <div className="flex justify-between items-center">
+                <h3 className="text-2xl font-bold text-brand-dark">Registrar Movimiento</h3>
+                <span className="text-brand-red text-xl">★</span>
+              </div>
+              <form onSubmit={handleSave} className="space-y-6">
               <div className="flex bg-brand-white p-1 rounded-2xl border border-brand-beige">
                 <button 
                   type="button" 
@@ -332,10 +335,11 @@ const AccountingManager: React.FC<AccountingManagerProps> = ({ data, updateData 
                 <button type="submit" className="flex-[2] bg-brand-dark text-white py-4 rounded-2xl font-bold hover:bg-brand-sage transition-all">Guardar Registro</button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
