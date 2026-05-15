@@ -52,11 +52,47 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectingProduct, setSelectingProduct] = useState<(Product & { price: number }) | null>(null);
-  const [selectedDesignIds, setSelectedDesignIds] = useState<string[]>([]);
+  const [designSelections, setDesignSelections] = useState<Record<string, number>>({});
+  const [productQuantity, setProductQuantity] = useState(1);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+
+  // Handle Browser Back button to close modals instead of navigating away
+  useEffect(() => {
+    const handlePopState = () => {
+      // When back is pressed, close all overlay elements
+      setZoomImage(null);
+      setSelectingProduct(null);
+      setIsCartOpen(false);
+      setSelectedCategoryId(null);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Separate effects to push history state only when a modal/overlay opens
+  useEffect(() => {
+    if (selectingProduct) window.history.pushState({ modal: 'product' }, "");
+  }, [!!selectingProduct]);
+
+  useEffect(() => {
+    if (isCartOpen) window.history.pushState({ modal: 'cart' }, "");
+  }, [isCartOpen]);
+
+  useEffect(() => {
+    if (zoomImage) window.history.pushState({ modal: 'zoom' }, "");
+  }, [!!zoomImage]);
+
+  useEffect(() => {
+    if (selectedCategoryId) window.history.pushState({ modal: 'category' }, "");
+  }, [selectedCategoryId]);
 
   useEffect(() => {
     if (selectingProduct) {
       document.body.style.overflow = 'hidden';
+      setCurrentImageIndex(0);
+      setProductQuantity(1);
+      setDesignSelections({});
     } else {
       document.body.style.overflow = 'unset';
     }
@@ -84,58 +120,54 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
   const addToCart = () => {
     if (!selectingProduct) return;
     
-    const designs = selectingProduct.designOptions?.filter(d => selectedDesignIds.includes(d.id)) || [];
     const hasOptions = selectingProduct.designOptions && selectingProduct.designOptions.length > 0;
     
     setCart(prev => {
       const otherItems = prev.filter(item => item.productId !== selectingProduct.id);
       
-      // If product has no options and is already in cart, and we are in the modal, 
-      // we might want to toggle it off if they click "Quitar" or just keep it.
-      // But the user said "añadir al carrito" from the detail.
-      
       const newItems: CartItem[] = [];
-      if (designs.length > 0) {
-        designs.forEach(design => {
-          newItems.push({ productId: selectingProduct.id, quantity: 1, selectedDesign: design });
+      if (hasOptions) {
+        (Object.entries(designSelections) as [string, number][]).forEach(([designId, quantity]) => {
+          const design = selectingProduct.designOptions?.find(d => d.id === designId);
+          if (design && quantity > 0) {
+            newItems.push({ productId: selectingProduct.id, quantity, selectedDesign: design });
+          }
         });
-      } else if (!hasOptions) {
-        // If it's already in cart, we keep it (or we could toggle, but user said "añadir")
-        newItems.push({ productId: selectingProduct.id, quantity: 1 });
+      } else {
+        newItems.push({ productId: selectingProduct.id, quantity: productQuantity });
       }
       
       return [...otherItems, ...newItems];
     });
     
     setSelectingProduct(null);
-    setSelectedDesignIds([]);
+    setDesignSelections({});
     setIsCartOpen(true);
   };
 
   const removeFromCart = (productId: string) => {
     setCart(prev => prev.filter(item => item.productId !== productId));
     setSelectingProduct(null);
-    setSelectedDesignIds([]);
-  };
-
-  const toggleQuickProduct = (product: Product & { price: number }) => {
-    setCart(prev => {
-      const isInCart = prev.some(item => item.productId === product.id);
-      if (isInCart) {
-        return prev.filter(item => item.productId !== product.id);
-      } else {
-        return [...prev, { productId: product.id, quantity: 1 }];
-      }
-    });
+    setDesignSelections({});
   };
 
   const toggleDesignSelection = (designId: string) => {
-    setSelectedDesignIds(prev => {
-      if (prev.includes(designId)) {
-        return prev.filter(id => id !== designId);
+    setDesignSelections(prev => {
+      const newSelections = { ...prev };
+      if (newSelections[designId]) {
+        delete newSelections[designId];
       } else {
-        return [...prev, designId];
+        newSelections[designId] = 1;
       }
+      return newSelections;
+    });
+  };
+
+  const updateDesignQuantity = (designId: string, delta: number) => {
+    setDesignSelections(prev => {
+      const current = prev[designId] || 0;
+      const newVal = Math.max(1, current + delta);
+      return { ...prev, [designId]: newVal };
     });
   };
 
@@ -359,11 +391,21 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                         isInCart={cart.some(item => item.productId === product.id)}
                         onOpenSelector={(p) => {
                           setSelectingProduct(p);
-                          // Pre-select designs already in cart for this product
-                          const currentDesigns = cart
-                            .filter(item => item.productId === p.id && item.selectedDesign)
-                            .map(item => item.selectedDesign!.id);
-                          setSelectedDesignIds(currentDesigns);
+                          // Pre-select items already in cart for this product
+                          const itemsInCart = cart.filter(item => item.productId === p.id);
+                          const selections: Record<string, number> = {};
+                          itemsInCart.forEach(item => {
+                            if (item.selectedDesign) {
+                              selections[item.selectedDesign.id] = item.quantity;
+                            }
+                          });
+                          setDesignSelections(selections);
+                          
+                          if (itemsInCart.length > 0 && !itemsInCart[0].selectedDesign) {
+                            setProductQuantity(itemsInCart[0].quantity);
+                          } else {
+                            setProductQuantity(1);
+                          }
                         }} 
                       />
                     ))}
@@ -448,9 +490,53 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                   </div>
                   
                   <div className="flex-1 overflow-y-auto mb-6 pr-2 custom-scrollbar min-h-0">
+                      {/* Galería de Imágenes */}
                       {selectingProduct.images && selectingProduct.images.length > 0 && (
-                        <div className="w-full rounded-[1.5rem] overflow-hidden mb-6 border border-brand-beige shadow-sm bg-brand-white flex-shrink-0 flex items-center justify-center bg-gray-50/30">
-                          <img src={selectingProduct.images[0]} className="max-w-full max-h-[40vh] md:max-h-[50vh] object-contain" alt={selectingProduct.name} referrerPolicy="no-referrer" loading="eager" decoding="sync" />
+                        <div className="relative group/gallery mb-6">
+                          <div className="w-full aspect-square rounded-[1.5rem] overflow-hidden border border-brand-beige shadow-sm bg-brand-white flex items-center justify-center bg-gray-50/30">
+                            <img 
+                              src={selectingProduct.images[currentImageIndex]} 
+                              className="w-full h-full object-cover animate-fadeIn cursor-zoom-in" 
+                              alt={`${selectingProduct.name} ${currentImageIndex + 1}`} 
+                              referrerPolicy="no-referrer" 
+                              loading="eager" 
+                              decoding="sync" 
+                              onClick={() => setZoomImage(selectingProduct.images![currentImageIndex])}
+                            />
+                          </div>
+                          
+                          {selectingProduct.images.length > 1 && (
+                            <>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurrentImageIndex(prev => (prev === 0 ? selectingProduct.images!.length - 1 : prev - 1));
+                                }}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center text-brand-dark hover:bg-white transition-all opacity-0 group-hover/gallery:opacity-100"
+                              >
+                                ❮
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurrentImageIndex(prev => (prev === selectingProduct.images!.length - 1 ? 0 : prev + 1));
+                                }}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center text-brand-dark hover:bg-white transition-all opacity-0 group-hover/gallery:opacity-100"
+                              >
+                                ❯
+                              </button>
+                              
+                              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 p-1.5 rounded-full bg-black/10 backdrop-blur-sm">
+                                {selectingProduct.images.map((_, idx) => (
+                                  <button 
+                                    key={idx}
+                                    onClick={() => setCurrentImageIndex(idx)}
+                                    className={`w-2 h-2 rounded-full transition-all ${idx === currentImageIndex ? 'bg-white w-4' : 'bg-white/40'}`}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
                       
@@ -460,39 +546,103 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                         </p>
                       </div>
 
-                      <label className="block text-[10px] md:text-[11px] font-black text-brand-dark uppercase tracking-[0.3em] mb-4 text-center">Selecciona uno o varios estampados:</label>
+                      {/* Selector de Cantidad - Solo si el producto NO tiene opciones de diseño */}
+                      {(!selectingProduct.designOptions || selectingProduct.designOptions.length === 0) && (
+                        <div className="flex flex-col items-center justify-center bg-brand-white p-4 rounded-[1.25rem] border border-brand-beige mb-6 shadow-sm">
+                          <label className="text-[10px] md:text-[11px] font-black text-brand-dark/40 uppercase tracking-[0.3em] mb-3">Cantidad</label>
+                          <div className="flex items-center gap-6">
+                            <button 
+                              onClick={() => setProductQuantity(q => Math.max(1, q - 1))}
+                              className="w-10 h-10 rounded-full border-2 border-brand-beige flex items-center justify-center text-xl font-bold hover:bg-brand-white active:scale-90 transition-all"
+                            >
+                              −
+                            </button>
+                            <span className="text-2xl font-black text-brand-dark w-8 text-center">{productQuantity}</span>
+                            <button 
+                              onClick={() => setProductQuantity(q => q + 1)}
+                              className="w-10 h-10 rounded-full border-2 border-brand-beige flex items-center justify-center text-xl font-bold hover:bg-brand-white active:scale-90 transition-all font-mono"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {selectingProduct.designOptions && selectingProduct.designOptions.length > 0 ? (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-5">
+                        <>
+                          <label className="block text-[10px] md:text-[11px] font-black text-brand-dark uppercase tracking-[0.3em] mb-4 text-center">Elegí el estampado y la cantidad:</label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               {selectingProduct.designOptions.map(design => {
-                                  const isSelected = selectedDesignIds.includes(design.id);
+                                  const isSelected = !!designSelections[design.id];
+                                  const quantity = designSelections[design.id] || 0;
                                   return (
-                                    <button 
+                                    <div 
                                       key={design.id} 
-                                      onClick={() => toggleDesignSelection(design.id)} 
-                                      className={`p-2 rounded-[1.25rem] border-2 transition-all group relative ${isSelected ? 'border-brand-sage bg-brand-white shadow-lg scale-105' : 'border-brand-beige hover:border-brand-greige'}`}
+                                      className={`p-3 rounded-[1.5rem] border-2 transition-all flex items-center gap-4 ${isSelected ? 'border-brand-sage bg-brand-white shadow-md' : 'border-brand-beige'}`}
                                     >
-                                        {isSelected && (
-                                          <div className="absolute top-1 right-1 z-10 bg-brand-sage text-white w-5 h-5 rounded-full flex items-center justify-center shadow-md">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
+                                        <div className="w-16 h-16 rounded-[1rem] overflow-hidden flex-shrink-0 relative group">
+                                          <img 
+                                            src={design.image} 
+                                            className="w-full h-full object-cover transition-all duration-500 cursor-zoom-in group-hover:scale-110" 
+                                            alt="Estampado" 
+                                            referrerPolicy="no-referrer" 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setZoomImage(design.image);
+                                            }}
+                                          />
+                                          <div 
+                                            onClick={() => toggleDesignSelection(design.id)}
+                                            className="absolute inset-0 flex items-center justify-center cursor-pointer pointer-events-none"
+                                          >
+                                            {isSelected && (
+                                              <div className="bg-brand-sage/40 w-full h-full flex items-center justify-center pointer-events-auto">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-white drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
+                                              </div>
+                                            )}
                                           </div>
-                                        )}
-                                        <div className="aspect-square rounded-[1rem] overflow-hidden mb-2">
-                                          <img src={design.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={design.name} referrerPolicy="no-referrer" loading="lazy" decoding="async" />
                                         </div>
-                                        <span className="text-[9px] md:text-[10px] font-black block truncate text-center uppercase text-brand-dark">{design.name}</span>
-                                    </button>
+                                        
+                                        <div className="flex-1 min-w-0" onClick={() => !isSelected && toggleDesignSelection(design.id)}>
+                                          {isSelected ? (
+                                            <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                                              <button 
+                                                onClick={() => updateDesignQuantity(design.id, -1)}
+                                                className="w-7 h-7 rounded-full bg-brand-beige/30 flex items-center justify-center text-xs font-bold hover:bg-brand-beige"
+                                              >
+                                                −
+                                              </button>
+                                              <span className="text-sm font-black text-brand-dark w-4 text-center">{quantity}</span>
+                                              <button 
+                                                onClick={() => updateDesignQuantity(design.id, 1)}
+                                                className="w-7 h-7 rounded-full bg-brand-beige/30 flex items-center justify-center text-xs font-bold hover:bg-brand-beige"
+                                              >
+                                                +
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <button 
+                                              type="button"
+                                              className="text-[9px] font-black uppercase tracking-widest text-brand-sage hover:text-brand-dark"
+                                            >
+                                              Seleccionar
+                                            </button>
+                                          )}
+                                        </div>
+                                    </div>
                                   );
                               })}
                           </div>
+                        </>
                       ) : (
                         <div className="text-center py-12 bg-brand-white/50 rounded-[1.5rem] border border-dashed border-brand-beige">
-                          <p className="text-brand-dark/60 italic text-[10px] px-6">Estampados exclusivos según stock disponible.</p>
+                          <p className="text-brand-dark/60 italic text-[10px] px-6">Ediciones exclusivas según stock disponible.</p>
                         </div>
                       )}
                   </div>
                   
                   <div className="flex flex-col md:flex-row gap-4 mt-auto">
-                      <button onClick={() => { setSelectingProduct(null); setSelectedDesignIds([]); }} className="md:flex-1 py-3 font-black text-brand-dark/40 uppercase text-[9px] tracking-widest hover:text-brand-dark transition-colors order-2 md:order-1">Cancelar</button>
+                      <button onClick={() => { setSelectingProduct(null); setDesignSelections({}); }} className="md:flex-1 py-3 font-black text-brand-dark/40 uppercase text-[9px] tracking-widest hover:text-brand-dark transition-colors order-2 md:order-1">Cancelar</button>
                       
                       {cart.some(item => item.productId === selectingProduct.id) ? (
                         <div className="md:flex-[3] flex flex-col sm:flex-row gap-3 order-1 md:order-2">
@@ -504,8 +654,8 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                           </button>
                           <button 
                             onClick={addToCart} 
-                            disabled={selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && selectedDesignIds.length === 0}
-                            className={`flex-[2] py-4 md:py-5 rounded-[1.5rem] font-black text-[11px] md:text-[13px] uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 ${selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && selectedDesignIds.length === 0 ? 'bg-brand-beige text-brand-dark/30 cursor-not-allowed' : 'bg-brand-sage text-white hover:bg-brand-dark hover:scale-[1.02]'}`}
+                            disabled={selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && Object.keys(designSelections).length === 0}
+                            className={`flex-[2] py-4 md:py-5 rounded-[1.5rem] font-black text-[11px] md:text-[13px] uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 ${selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && Object.keys(designSelections).length === 0 ? 'bg-brand-beige text-brand-dark/30 cursor-not-allowed' : 'bg-brand-sage text-white hover:bg-brand-dark hover:scale-[1.02]'}`}
                           >
                             {selectingProduct.designOptions && selectingProduct.designOptions.length > 0 ? 'Actualizar' : 'Añadido'}
                           </button>
@@ -513,10 +663,15 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
                       ) : (
                         <button 
                           onClick={addToCart} 
-                          disabled={selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && selectedDesignIds.length === 0}
-                          className={`md:flex-[3] py-4 md:py-5 rounded-[1.5rem] font-black text-[11px] md:text-[13px] uppercase tracking-[0.25em] shadow-xl transition-all active:scale-95 order-1 md:order-2 ${selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && selectedDesignIds.length === 0 ? 'bg-brand-beige text-brand-dark/30 cursor-not-allowed' : 'bg-brand-sage text-white hover:bg-brand-dark hover:scale-[1.02]'}`}
+                          disabled={selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && Object.keys(designSelections).length === 0}
+                          className={`md:flex-[3] py-4 md:py-5 rounded-[1.5rem] font-black text-[11px] md:text-[13px] uppercase tracking-[0.25em] shadow-xl transition-all active:scale-95 order-1 md:order-2 ${selectingProduct.designOptions && selectingProduct.designOptions.length > 0 && Object.keys(designSelections).length === 0 ? 'bg-brand-beige text-brand-dark/30 cursor-not-allowed' : 'bg-brand-sage text-white hover:bg-brand-dark hover:scale-[1.02]'}`}
                         >
-                          {selectedDesignIds.length > 1 ? `Añadir ${selectedDesignIds.length} Variantes` : 'Añadir al Carrito'}
+                          {(() => {
+                            const totalItems = selectingProduct.designOptions && selectingProduct.designOptions.length > 0 
+                              ? (Object.values(designSelections) as number[]).reduce((a, b) => a + b, 0)
+                              : productQuantity;
+                            return `Añadir ${totalItems} al Carrito`;
+                          })()}
                         </button>
                       )}
                   </div>
@@ -582,6 +737,27 @@ const CustomerShop: React.FC<CustomerShopProps> = ({ data }) => {
            </div>
         </div>
       </div>
+
+      {/* Lightbox / Zoom */}
+      {zoomImage && (
+        <div 
+          className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 md:p-10 cursor-zoom-out"
+          onClick={() => setZoomImage(null)}
+        >
+          <button 
+            className="absolute top-6 right-6 text-white bg-white/10 hover:bg-white/20 w-12 h-12 rounded-full flex items-center justify-center transition-all z-[310]"
+            onClick={(e) => { e.stopPropagation(); setZoomImage(null); }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+          <img 
+            src={zoomImage} 
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300 transform scale-100" 
+            alt="Zoom" 
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      )}
     </>
   );
 };

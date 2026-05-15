@@ -37,6 +37,14 @@ const AppContent: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const location = useLocation();
 
+  // Migración de URLs viejas (#/) a URLs limpias
+  useEffect(() => {
+    if (window.location.hash.startsWith('#/')) {
+      const cleanPath = window.location.hash.slice(2);
+      window.location.replace(`/${cleanPath}`);
+    }
+  }, []);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -61,9 +69,23 @@ const AppContent: React.FC = () => {
     });
   }, []);
 
-  // Cerrar menú móvil al cambiar de ruta
+  // Cerrar menú móvil y actualizar canonical al cambiar de ruta
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    
+    // Actualizar tag canonical dinámicamente
+    const canonical = document.querySelector('link[rel="canonical"]');
+    const path = location.pathname === '/' ? '' : location.pathname;
+    const href = `https://www.lalawi.com${path}`;
+    
+    if (canonical) {
+      canonical.setAttribute('href', href);
+    } else {
+      const link = document.createElement('link');
+      link.setAttribute('rel', 'canonical');
+      link.setAttribute('href', href);
+      document.head.appendChild(link);
+    }
   }, [location.pathname]);
 
   if (loading || !data) {

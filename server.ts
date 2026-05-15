@@ -10,6 +10,15 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Middleware para forzar WWW en producción y evitar duplicidad de indexación
+  app.use((req, res, next) => {
+    const host = req.get('host');
+    if (process.env.NODE_ENV === 'production' && host === 'lalawi.com') {
+      return res.redirect(301, `https://www.lalawi.com${req.originalUrl}`);
+    }
+    next();
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
